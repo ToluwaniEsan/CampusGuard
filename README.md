@@ -6,9 +6,12 @@ Team Catalysts: Esan Toluwani, Osamwengumwenro Oni-Ojo, Yin-Chih Lan, Olayiwola 
 
 | Part | Where | What it does |
 |---|---|---|
-| **Paste & check web app** | `web/` (served by the API), `dist/campusguard.html` (single file, works offline) | Paste an email, text, DM or link, then get a verdict dial, named red flags with severity, the message marked up inline, a breakdown of each link, signs pointing the other way, "what to do", a copyable summary, and the "Spot the scam" practice quiz |
-| **"How it works" animation** | Button on the page | 10-step walkthrough driven by the real model on whatever you pasted: clean → words → TF-IDF → detectors → link inspector → weighing the evidence (SHAP) → combining text + links → **checking the sender** → decision and explanation. Presentation controls: ←/→, Space, Esc, speed |
-| **Sender check** | Results panel, animation step 9, extension report, API (`sender_check`) | Shows how the From line was judged: the address split into name / mailbox / real owner, each rule as a Yes/No question with the reason, a bar showing the content score, the band the sender is allowed to move it within, and where it landed, plus the exact formula (e.g. `54% + 0.20 × (100% − 54%) = 63%`) |
+| **Home page (current)** | `web/home.html`, `dist/campusguard_home.html` (single file, works offline) | One take-all box: paste a whole email, a text, a link, or drop in a screenshot. CampusGuard works out which part is the sender, the subject and the message, then shows the result under the box: a risk dial that sweeps up from zero, why it was flagged, the links, the sender check and what to do. The box shrinks to the top and can be reopened and edited. Light/dark switch and an animation off-switch |
+| **Telling sender from message** | `web/js/campusguard-intake.js` | Rule-based intake that splits a pasted email or screenshot text into sender, subject and body (From:/Subject: headers, `Name <address>` lines, bare addresses, forwarded headers, mail-app clutter). The detected sender can be corrected on the page |
+| **Screenshot reading** | `web/vendor/ocr/` (Tesseract.js, Apache-2.0) | Screenshots are read on the device, with the reader bundled inside the page. No image is uploaded |
+| **"See how it decided" walkthrough** | `web/js/journey.js`, button under the result | Full-screen, left-to-right line of stations that zooms into each one and back out: Read → Separate → Clean → Spot the signs → Check the links → Weigh it → Sender and verdict, using the real numbers for what you pasted. Back / Play-Pause / Next, speed, ←/→, Space, Esc |
+| **Original page** | `web/index.html`, `dist/campusguard.html` | The first two-column layout, with the "Spot the scam" practice quiz and a 10-step "How it works" animation. Still served by the API |
+| **Sender check** | Results, walkthrough, extension report, API (`sender_check`) | Shows how the From line was judged: the address split into name / mailbox / real owner, each rule as a Yes/No question with the reason, a bar showing the content score, the band the sender is allowed to move it within, and where it landed, plus the exact formula (e.g. `54% + 0.20 × (100% − 54%) = 63%`) |
 | **Browser extension** | `extension/`, `dist/campusguard-extension-*.zip` | Gmail & Outlook web: a verdict card above every opened email. Also a popup paste-checker, a right-click "Check selected text / this link", and a full report page. Chrome, Edge, Brave and Firefox |
 | **API server** | `server/app.py`, `Dockerfile` | FastAPI: `POST /api/analyze`, `GET /api/health`, optional `POST /api/explain` (LLM rewrite of the flags), and it hosts the web app. No database, no body logging, rate limited, security headers |
 | **Models** | `campusguard/`, `models/` | Message model (logistic regression + 23 red-flag detectors) and link model (gradient-boosted trees). Python reference plus an identical JavaScript port |
@@ -18,7 +21,8 @@ Team Catalysts: Esan Toluwani, Osamwengumwenro Oni-Ojo, Yin-Chih Lan, Olayiwola 
 ## Quick start
 
 ```bash
-# 1) Just the app: double-click dist/campusguard.html (no install, works offline)
+# 1) Just the app: double-click dist/campusguard_home.html (no install, works offline)
+#    (dist/campusguard.html is the original layout with the practice quiz)
 
 # 2) API + app
 pip install -r requirements.txt
@@ -75,6 +79,8 @@ Details: `reports/metrics_v2.json`, `reports/*battery_results.json`, `reports/ca
 - One blind false alarm: a real Venmo "you were paid $18" notice (content 75%, 56% after the official-sender discount). Money + Venmo wording still reads as scam-like to the text model.
 - The 30-message campus set shares wording with the generated training examples, so its 30/30 is a sanity check, not a benchmark. The blind battery is the honest test.
 - Casual texts from friends can still trip false alarms more often than email (about 1 in 10 on unseen SMS).
+- Screenshot reading is English only and depends on image quality. It is tested in the offline file; some hosts that embed the page block the reader.
+- The extension and the API-served page still use the original layout, not the new home page.
 - Real AAMU mail (de-identified, from Campus IT) remains the single best next improvement.
 
 ## Rebuild everything
@@ -83,6 +89,8 @@ Details: `reports/metrics_v2.json`, `reports/*battery_results.json`, `reports/ca
 scripts/download_data.sh && pip install pandas tldextract   # tldextract only to regenerate the suffix list
 scripts/rebuild_all.sh    # data -> train -> export JS -> parity + battery tests -> web + extension packages
 python3 tests/test_api.py # API tests;  tests/ui_test.py and tests/extension_test.py drive a real browser
+node tests/intake_test.js  # sender / subject / message separation
+python3 scripts/build_web.py  # rebuild the single-file pages in dist/
 ```
 
 Campus settings (trusted domains, campus names, brands) live at the top of `campusguard/features.py`. Run `scripts/rebuild_all.sh` after editing them.
