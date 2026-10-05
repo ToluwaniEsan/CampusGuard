@@ -1,0 +1,52 @@
+<!--CG:BODY-START-->
+<svg style="display:none" aria-hidden="true">
+  <symbol id="h-clip" viewBox="0 0 24 24"><path d="M21 11.5 12.5 20a5.5 5.5 0 0 1-7.8-7.8l8.6-8.5a3.7 3.7 0 0 1 5.2 5.2l-8.6 8.5a1.8 1.8 0 0 1-2.6-2.6l7.9-7.8"/></symbol>
+  <symbol id="h-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="h-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="h-pen" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4"/></symbol>
+  <symbol id="h-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.2 5.2 7 7M17 17l1.8 1.8M18.8 5.2 17 7M7 17l-1.8 1.8"/></symbol>
+  <symbol id="h-moon" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></symbol>
+  <symbol id="h-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15z"/></symbol>
+  <symbol id="h-nospark" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3zM3 3l18 18"/></symbol>
+  <symbol id="h-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></symbol>
+  <symbol id="h-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+  <symbol id="h-back" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+  <symbol id="h-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></symbol>
+  <symbol id="h-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
+  <symbol id="h-link" viewBox="0 0 24 24"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></symbol>
+  <symbol id="h-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></symbol>
+  <symbol id="h-img" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m4 18 5-5 4 4 3-3 4 4"/></symbol>
+  <symbol id="h-alert" viewBox="0 0 24 24"><path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4M12 17h.01"/></symbol>
+  <symbol id="h-check" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></symbol>
+</svg>
+
+<main class="page">
+  <header class="hero">
+    <h1>Campus<span>Guard</span></h1>
+    <p>Paste anything that feels off. Find out if it's a scam.</p>
+  </header>
+
+  <div class="slot-hero" id="slot-hero">
+    <div class="box" id="box">
+      <div class="thumbs" id="thumbs"></div>
+      <textarea id="content" rows="3" spellcheck="false" aria-label="Message, link or screenshot to check" placeholder="Paste a message, a link, or drop a screenshot"></textarea>
+      <div class="box-foot">
+        <button type="button" class="attach" id="attach" aria-label="Add a screenshot or image" title="Add a screenshot"><svg class="ico"><use href="#h-clip"/></svg></button>
+        <input type="file" id="file" accept="image/*" multiple hidden>
+        <span class="hint">Enter to check · Shift + Enter for a new line</span>
+      </div>
+      <div class="dock-view" aria-hidden="true"><div style="min-width:0"><small>You pasted</small><span class="t" id="dock-text"></span></div><span class="edit"><svg class="ico"><use href="#h-pen"/></svg></span></div>
+    </div>
+    <div class="go-wrap" id="go-wrap"><button type="button" class="go" id="go">Check it <svg class="ico"><use href="#h-arrow"/></svg></button></div>
+  </div>
+
+  <section class="results" id="results" hidden aria-live="polite"></section>
+</main>
+
+<button type="button" class="theme motion" id="motion" aria-label="Turn animations on or off" aria-pressed="true">
+  <svg class="ico on"><use href="#h-spark"/></svg><svg class="ico off"><use href="#h-nospark"/></svg>
+</button>
+<button type="button" class="theme" id="theme" aria-label="Switch between light and dark mode" title="Light / dark">
+  <svg class="ico sun"><use href="#h-sun"/></svg><svg class="ico moon"><use href="#h-moon"/></svg>
+</button>
+<!--CG:BODY-END-->

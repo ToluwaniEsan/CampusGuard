@@ -1,0 +1,74 @@
+<!--CG:BODY-START-->
+<header class="topbar">
+  <div class="v-wrap" style="display:flex;align-items:center;gap:16px;min-height:60px">
+    <a class="brand" href="#check" aria-label="CampusGuard">
+      <svg width="30" height="34" viewBox="0 0 34 38" aria-hidden="true"><path d="M17 1 32 7v11c0 9.5-6.4 16.4-15 19C8.4 34.4 2 27.5 2 18V7L17 1Z" fill="var(--teal)" opacity=".18"/><path d="M17 1 32 7v11c0 9.5-6.4 16.4-15 19C8.4 34.4 2 27.5 2 18V7L17 1Z" fill="none" stroke="var(--teal)" stroke-width="2"/><path d="m10.5 18.5 4.5 4.5 8.5-9" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <b>CampusGuard</b>
+    </a>
+    <nav class="nav" aria-label="Main">
+      <a href="#check">Check</a><a href="#practice">Practice</a><a href="#hood">Under the hood</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="v-wrap" id="check">
+    <div class="v-hero">
+      <h1>Feels off? <em>Paste it.</em></h1>
+      <div class="v-badges" id="badges"></div>
+    </div>
+    <section class="v-check" aria-label="Check a message">
+      <form class="v-input" id="form" autocomplete="off">
+        <label class="v-from" for="sender"><svg class="v-ico"><use href="#i-user"/></svg><input id="sender" placeholder="From (optional)"></label>
+        <textarea id="content" spellcheck="false" aria-label="Message or link" placeholder="Paste a message or a link"></textarea>
+        <div class="v-row">
+          <button type="submit" class="v-btn primary"><svg class="v-ico"><use href="#i-search"/></svg>Check</button>
+          <button type="button" class="v-btn icon" id="clear" data-tip="Clear|Empty the box"><svg class="v-ico"><use href="#i-x"/></svg></button>
+          <span class="v-tiny" style="margin-left:auto" id="status"></span>
+        </div>
+        <div class="v-row"><span class="v-tiny">Try one</span><div class="v-samples" id="samples"></div></div>
+      </form>
+      <div class="v-result" id="result" aria-live="polite"></div>
+    </section>
+  </div>
+
+  <section class="v-band alt" id="practice">
+    <div class="v-wrap">
+      <div class="v-head"><span class="v-num"><svg class="v-ico"><use href="#i-target"/></svg></span><h2>Spot the scam</h2></div>
+      <div class="v-quiz"><div class="v-qmsg" id="qmsg"></div><div class="v-qside" id="qside"></div></div>
+    </div>
+  </section>
+
+  <section class="v-band" id="hood">
+    <div class="v-wrap">
+      <div class="v-head"><span class="v-num"><svg class="v-ico"><use href="#i-cpu"/></svg></span><h2>Under the hood</h2></div>
+      <div class="v-stats" id="stats"></div>
+    </div>
+  </section>
+</main>
+<footer><div class="v-wrap v-tiny" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><span>Team Catalysts · UN SDG 4</span><span>Layout preview: same model, new layout</span></div></footer>
+<div class="v-pop" id="pop" role="tooltip"></div>
+<div class="xp" id="xp" hidden role="dialog" aria-modal="true" aria-labelledby="xp-h">
+  <header>
+    <svg width="26" height="28" viewBox="0 0 34 38" aria-hidden="true"><path d="M17 1 32 7v11c0 9.5-6.4 16.4-15 19C8.4 34.4 2 27.5 2 18V7L17 1Z" fill="none" stroke="#4fd1c5" stroke-width="2.4"/></svg>
+    <h2 id="xp-h">Inside CampusGuard: one message, start to verdict</h2>
+    <button type="button" class="xbtn x" id="xp-close">Close ✕</button>
+  </header>
+  <div class="xp-body">
+    <ol class="xp-steps" id="xp-steps"></ol>
+    <div class="xp-stage" id="xp-stage"></div>
+  </div>
+  <div>
+    <div class="xp-progress"><i id="xp-prog"></i></div>
+    <div class="xp-controls">
+      <button type="button" class="xbtn" id="xp-prev">◀ Back</button>
+      <button type="button" class="xbtn play" id="xp-play">❚❚ Pause</button>
+      <button type="button" class="xbtn" id="xp-next">Next ▶</button>
+      <label style="display:flex;gap:8px;align-items:center;color:var(--stage-dim)" for="xp-speed">Speed
+        <select id="xp-speed" class="xbtn" style="padding:6px"><option value="1.6">Slow</option><option value="1" selected>Normal</option><option value="0.6">Fast</option></select></label>
+      <span style="margin-left:auto;color:var(--stage-dim);font-size:14px">Keys: ← → step · Space play/pause · Esc close</span>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+<!--CG:BODY-END-->

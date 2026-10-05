@@ -1,0 +1,9 @@
+# Runtime (API server + Python model). Pin these: the joblib models are version-sensitive.
+scikit-learn==1.8.0
+numpy==2.4.4
+scipy==1.17.1
+joblib==1.5.3
+fastapi>=0.110
+uvicorn>=0.29
+# Training only
+pandas==3.0.2

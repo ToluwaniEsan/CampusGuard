@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>CampusGuard</title><link rel="stylesheet" href="css/ext.css">
+<style>body{width:380px;padding:12px;display:grid;gap:10px}.row{display:flex;gap:8px;align-items:center;justify-content:space-between}</style></head>
+<body>
+  <div class="row"><div class="brand"><img src="icons/icon48.png" alt=""><div><b>CampusGuard</b><small>Detect. Explain. Stay safe.</small></div></div><span class="muted" id="ver"></span></div>
+  <div class="field"><label for="sender">From (optional)</label><input id="sender" placeholder="Name &lt;address@example.com&gt;"></div>
+  <div class="field"><label for="text">Paste a message or link</label><textarea id="text" placeholder="Paste an email, text, DM or link…"></textarea></div>
+  <div class="row"><button class="btn primary" id="check">Check it</button><button class="btn" id="full" hidden>Full analysis</button></div>
+  <div id="out" style="display:grid;gap:8px"></div>
+  <label class="muted" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="auto"> Scan emails automatically in Gmail &amp; Outlook</label>
+  <div class="muted">Runs on your device. Nothing is stored or sent. Links are never opened.</div>
+  <script src="js/render.js"></script>
+  <script src="js/popup.js"></script>
+</body>
+</html>

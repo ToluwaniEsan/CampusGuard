@@ -1,0 +1,139 @@
+/* "How it decided": one straight line of stations; a camera zooms out to the whole line and in to each stop.
+   .j-world is the canvas the camera moves. --f is the zoom (0 = whole line, 1 = at a station);
+   --inv is 1 / overview-scale, so dots and labels stay a readable size when zoomed all the way out. */
+.jr { position: fixed; inset: 0; z-index: 60; background: var(--bg); color: var(--ink); display: grid; grid-template-rows: auto minmax(0, 1fr) auto; padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px); animation: jr-in .35s ease both; }
+@keyframes jr-in { from { opacity: .001; } to { opacity: 1; } }
+.j-top { display: flex; align-items: center; gap: 14px; padding: 14px 20px; }
+.j-top b { font: 600 18px/1 var(--f-display); color: var(--head); }
+.j-top span { color: var(--ink-3); font-size: 15px; }
+.j-x { margin-left: auto; width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel); cursor: pointer; display: grid; place-items: center; color: var(--ink-2); }
+.j-x:hover { border-color: var(--accent); color: var(--accent); }
+
+.j-view { position: relative; overflow: hidden; min-height: 0; }
+.j-world { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; --f: 0; --inv: 6; }
+.j-line { position: absolute; left: 0; top: 0; height: calc(5px * var(--inv) * (1 - var(--f) * .78)); transform: translateY(-50%); background: var(--line); border-radius: 999px; }
+.j-line i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--teal), var(--accent)); border-radius: 999px; }
+.j-marker { position: absolute; top: 0; width: calc(34px * var(--inv)); height: calc(34px * var(--inv)); margin: calc(-17px * var(--inv)) 0 0 calc(-17px * var(--inv)); border-radius: 50%; background: color-mix(in srgb, var(--accent) 28%, transparent); opacity: calc(1 - var(--f) * 2.2); pointer-events: none; }
+
+.j-dot { position: absolute; top: 0; width: calc(26px * var(--inv)); height: calc(26px * var(--inv)); margin: calc(-13px * var(--inv)) 0 0 calc(-13px * var(--inv)); padding: 0; border-radius: 50%; border: calc(3px * var(--inv)) solid var(--line); background: var(--panel); color: var(--ink-3); cursor: pointer; display: grid; place-items: center; opacity: calc(1 - var(--f) * 1.7); font: 600 calc(12px * var(--inv))/1 var(--f-display); }
+.j-dot .c { display: none; } .j-dot .ico { width: calc(13px * var(--inv)); height: calc(13px * var(--inv)); stroke-width: 3; }
+.j-dot em { position: absolute; top: calc(100% + 12px * var(--inv)); left: 50%; transform: translateX(-50%); white-space: nowrap; font: 500 calc(14px * var(--inv))/1.2 var(--f-body); font-style: normal; color: var(--ink-3); }
+.j-world.no-names .j-dot em { display: none; }
+.j-dot.done { border-color: var(--teal); background: var(--teal); color: var(--panel); } .j-dot.done .n { display: none; } .j-dot.done .c { display: grid; }
+.j-dot.now { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 calc(7px * var(--inv)) color-mix(in srgb, var(--accent) 22%, transparent); }
+.j-dot.now em, .j-dot.done em { color: var(--ink); }
+.j-world.no-names .j-dot.now em { display: block; font-weight: 600; }
+
+.j-st { position: absolute; top: 0; width: var(--pw); height: var(--ph); transform: translate(-50%, -50%); visibility: hidden; opacity: 0; pointer-events: none; }
+.j-st.live { visibility: visible; opacity: calc((var(--f) - .45) * 2.2); pointer-events: auto; }
+.j-card { width: 100%; height: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: 28px; box-shadow: var(--lift); padding: clamp(18px, 3.2vw, 34px); display: flex; flex-direction: column; overflow: hidden; }
+.j-eyebrow { font: 600 12px/1 var(--f-body); letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+.j-card h3 { margin: 10px 0 0; font: 600 clamp(22px, 3vw, 32px)/1.12 var(--f-display); color: var(--head); text-wrap: balance; }
+.j-cap { margin: 8px 0 0; color: var(--ink-2); font-size: clamp(15px, 1.6vw, 17px); max-width: 60ch; }
+.j-body { flex: 1; min-height: 0; margin-top: clamp(14px, 2.4vh, 24px); display: flex; flex-direction: column; justify-content: center; overflow: auto; }
+.j-body [data-at] { opacity: 0; transform: translateY(10px); transition: opacity .45s ease, transform .45s ease; }
+.j-body [data-at].on { opacity: 1; transform: none; }
+
+.j-paper { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 1.7; padding: 16px 18px; border-radius: 18px; background: var(--panel-2); border: 1px solid var(--line); max-height: 100%; overflow: hidden; min-width: 0; }
+.j-read { display: grid; gap: 14px; justify-items: center; min-height: 0; }
+.j-read .j-paper { width: 100%; max-height: min(240px, 34vh); }
+.j-shots { display: flex; gap: 10px; } .j-shots img { height: 84px; max-width: 46vw; border-radius: 12px; border: 1px solid var(--line); object-fit: cover; }
+.j-arrow { color: var(--ink-3); transform: rotate(90deg); } .j-arrow.on { transform: rotate(90deg); }
+.j-stamp { display: inline-flex; gap: 10px; align-items: center; padding: 10px 18px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font: 600 17px/1.2 var(--f-display); }
+.j-body .j-stamp[data-at] { transform: scale(1.5) rotate(-4deg); } .j-body .j-stamp[data-at].on { transform: none; }
+
+.j-sep { display: grid; gap: 12px; min-height: 0; }
+.j-lines { display: grid; gap: 4px; }
+.j-ln { padding: 3px 12px; border-radius: 8px; font-size: 13.5px; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: var(--panel-2); overflow-wrap: anywhere; border-left: 4px solid transparent; transition: background .5s, opacity .5s, border-color .5s, color .5s; }
+.j-lines.sorted .j-ln.who { background: var(--accent-soft); border-left-color: var(--accent); }
+.j-lines.sorted .j-ln.what { border-left-color: var(--teal); }
+.j-lines.sorted .j-ln.junk { opacity: .35; text-decoration: line-through; }
+.j-split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.j-box { padding: 12px 14px; border-radius: 16px; border: 1px solid var(--line); background: var(--panel-2); min-width: 0; }
+.j-box small { display: flex; gap: 6px; align-items: center; font: 600 11px/1 var(--f-body); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 6px; }
+.j-box small .ico { width: 15px; height: 15px; }
+.j-box b { font-weight: 600; font-size: 15px; line-height: 1.35; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.j-box.who { border-color: var(--accent); } .j-box.what { border-color: var(--teal); }
+
+.j-swap { position: relative; border-radius: 6px; padding: 1px 4px; transition: background .5s; }
+.j-swap b { display: none; font: 700 13px/1 var(--f-mono); color: var(--teal); }
+.j-clean.swapped .j-swap { background: color-mix(in srgb, var(--teal) 16%, transparent); }
+.j-clean.swapped .j-swap i { display: none; } .j-clean.swapped .j-swap b { display: inline; }
+.j-swap i { font-style: normal; }
+
+.j-signs { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 18px; align-items: start; min-height: 0; }
+.j-signs .j-paper { max-height: min(330px, 46vh); }
+.j-body mark[data-at] { opacity: 1; transform: none; background: transparent; color: inherit; border-radius: 4px; padding: 1px 2px; transition: background .4s, box-shadow .4s; }
+.j-body mark[data-at].on { background: var(--mark-danger); box-shadow: inset 0 -2px 0 var(--danger); }
+.j-chips { display: grid; gap: 8px; }
+.j-chip { display: flex; gap: 10px; align-items: center; padding: 8px 12px; border-radius: 14px; background: var(--danger-soft); color: var(--ink); font-weight: 600; font-size: 14px; line-height: 1.25; }
+.j-chip span { width: 32px; height: 32px; border-radius: 10px; background: var(--panel); color: var(--danger); display: grid; place-items: center; flex: none; }
+.j-chip .ico { width: 17px; height: 17px; }
+.j-chip.more { background: var(--panel-2); color: var(--ink-3); justify-content: center; }
+.j-chip.ok { background: var(--ok-soft); } .j-chip.ok span { color: var(--ok); }
+
+.j-link { display: grid; gap: 14px; justify-items: start; }
+.j-url { font: 500 clamp(15px, 2.2vw, 22px)/1.6 var(--f-mono); overflow-wrap: anywhere; padding: 14px 18px; border-radius: 18px; background: var(--panel-2); border: 1px solid var(--line); width: 100%; }
+.j-url i { font-style: normal; color: var(--ink-3); }
+.j-url b.own { background: var(--accent-soft); color: var(--accent); border-radius: 6px; padding: 1px 5px; }
+.j-owner { display: flex; gap: 8px; align-items: center; color: var(--ink-2); } .j-owner b { font-family: var(--f-mono); color: var(--ink); overflow-wrap: anywhere; }
+.j-checks { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; width: 100%; }
+.j-check { display: flex; gap: 8px; align-items: center; padding: 9px 12px; border-radius: 12px; font-size: 14px; font-weight: 600; }
+.j-check.bad { background: var(--danger-soft); color: var(--danger); } .j-check.ok { background: var(--ok-soft); color: var(--ok); }
+.j-check .ico { width: 17px; height: 17px; }
+.j-meter { display: flex; gap: 12px; align-items: center; width: 100%; } .j-meter b { font: 600 16px/1 var(--f-display); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.j-meter-t { flex: 1; height: 10px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.j-meter-t i { display: block; height: 100%; width: 0; border-radius: 999px; transition: width .9s ease; }
+.j-meter.on .j-meter-t i { width: var(--w); }
+.j-meter-t i.hi { background: var(--danger); } .j-meter-t i.mid { background: var(--warn); } .j-meter-t i.lo { background: var(--ok); }
+
+.j-weigh { display: grid; gap: 10px; }
+.j-scale { position: relative; height: 46px; margin-inline: 14px; }
+.j-scale-t { position: absolute; left: 0; right: 0; top: 12px; height: 12px; border-radius: 999px; background: linear-gradient(90deg, var(--ok), var(--warn) 58%, var(--danger)); opacity: .55; }
+.j-knob { position: absolute; top: 4px; left: 0; width: 28px; height: 28px; margin-left: -14px; border-radius: 50%; background: var(--panel); border: 4px solid var(--ink); box-shadow: var(--lift-sm); }
+.j-scale span { position: absolute; top: 30px; font-size: 12px; color: var(--ink-3); } .j-scale .l { left: 0; } .j-scale .r { right: 0; }
+.j-score { font: 600 clamp(38px, 6vw, 58px)/1 var(--f-display); text-align: center; font-variant-numeric: tabular-nums; color: var(--ok); }
+.j-score[data-z="mid"] { color: var(--warn); } .j-score[data-z="hi"] { color: var(--danger); }
+.j-pushes { display: grid; gap: 6px; margin-top: 4px; }
+.j-push { display: grid; grid-template-columns: minmax(0, 190px) minmax(0, 1fr) 20px; gap: 12px; align-items: center; font-size: 14px; }
+.j-push span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); }
+.j-push div { height: 10px; border-radius: 999px; background: var(--panel-2); overflow: hidden; }
+.j-push i { display: block; height: 100%; width: 0; border-radius: 999px; transition: width .6s ease; }
+.j-push.on i { width: var(--w); }
+.j-push.up i { background: var(--danger); } .j-push.down i { background: var(--ok); }
+.j-push.up b { color: var(--danger); } .j-push.down b { color: var(--ok); } .j-push b { font-size: 12px; }
+
+.j-verdict { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 24px; align-items: center; }
+.j-verdict:has(.j-final:only-child) { grid-template-columns: minmax(0, 1fr); }
+.j-snd small { display: flex; gap: 6px; align-items: center; font: 600 11px/1 var(--f-body); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 10px; } .j-snd small .ico { width: 15px; height: 15px; }
+.j-addr { display: inline-block; font: 700 clamp(15px, 2vw, 19px)/1.3 var(--f-mono); padding: 6px 12px; border-radius: 10px; background: var(--panel-2); overflow-wrap: anywhere; }
+.j-addr.bad { background: var(--danger-soft); color: var(--danger); } .j-addr.ok { background: var(--ok-soft); color: var(--ok); }
+.j-snd p { margin: 10px 0 0; color: var(--ink-2); font-size: 15px; }
+.j-move { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; } .j-move b { font: 600 22px/1 var(--f-display); font-variant-numeric: tabular-nums; } .j-move span { width: 100%; font-size: 13px; color: var(--ink-3); }
+.j-final { display: grid; justify-items: center; text-align: center; gap: 2px; }
+.j-dial { width: min(240px, 60vw); }
+.j-final h4 { margin: 8px 0 0; font: 600 clamp(20px, 2.8vw, 28px)/1.15 var(--f-display); color: var(--head); text-wrap: balance; }
+
+/* controls */
+.j-hud { padding: 8px 20px 14px; }
+.j-rail { display: flex; gap: 8px; justify-content: center; margin-bottom: 10px; }
+.j-rail button { width: 26px; height: 10px; border-radius: 999px; border: 0; background: var(--line); cursor: pointer; padding: 0; transition: background .2s, width .2s; }
+.j-rail button.done { background: var(--teal); } .j-rail button.now { background: var(--accent); width: 44px; }
+.j-prog { height: 3px; background: var(--line); border-radius: 999px; overflow: hidden; } .j-prog i { display: block; height: 100%; width: 0; background: var(--accent); }
+.j-ctl { display: flex; align-items: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; justify-content: center; }
+.j-btn { display: inline-flex; gap: 8px; align-items: center; padding: 10px 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; font-weight: 600; }
+.j-btn:hover { border-color: var(--accent); }
+.j-btn.main { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); min-width: 120px; justify-content: center; }
+.j-speed { display: inline-flex; gap: 8px; align-items: center; color: var(--ink-3); font-size: 14px; }
+.j-speed select { padding: 8px 10px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); }
+.j-keys { color: var(--ink-3); font-size: 13px; margin-left: 8px; }
+
+@media (max-width: 720px) {
+  .j-signs, .j-verdict { grid-template-columns: minmax(0, 1fr); }
+  .j-signs .j-paper { max-height: 24vh; } .j-chip { padding: 6px 10px; font-size: 13px; } .j-chip span { width: 26px; height: 26px; }
+  .j-split { grid-template-columns: minmax(0, 1fr); }
+  .j-ln:nth-child(n+6) { display: none; }
+  .j-push { grid-template-columns: minmax(0, 120px) minmax(0, 1fr) 16px; }
+  .j-keys { display: none; } .j-btn span { display: none; } .j-btn.main span { display: inline; } .j-btn.main { min-width: 104px; }
+  .j-dial { width: 170px; } .j-snd p { display: none; }
+}

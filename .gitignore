@@ -1,0 +1,9 @@
+# raw and processed training data (about 400 MB; re-download with scripts/download_data.sh)
+data/raw/*
+!data/raw/.gitkeep
+data/processed/
+__pycache__/
+*.pyc
+tests/_*
+.DS_Store
+node_modules/
