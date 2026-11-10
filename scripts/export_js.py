@@ -20,7 +20,7 @@ sys.path.insert(0, str(ROOT))
 from campusguard import features as F  # noqa: E402
 from campusguard import preprocess as P  # noqa: E402
 from campusguard import predict as PR  # noqa: E402
-from campusguard.model import TOKEN_SRC  # noqa: E402
+from campusguard.model import CHAR_MAX, CHAR_MIN, TOKEN_SRC, r7  # noqa: E402
 
 
 def main():
@@ -32,19 +32,29 @@ def main():
     for t, i in vocab.items():
         terms[i] = t
     n_words = len(terms)
-    coef = clf.coef_.ravel().tolist()
+    coef = r7(clf.coef_.ravel())
+    ch = getattr(vec, "char", None)
+    char = None
+    if ch is not None:
+        cterms = [None] * len(ch.vocabulary_)
+        for t, i in ch.vocabulary_.items():
+            cterms[i] = t
+        char = {"terms": cterms, "idf": r7(ch.idf_), "weight": vec.char_weight,
+                "min_n": CHAR_MIN, "max_n": CHAR_MAX}
     bundle = {
         "version": m.get("version", "2.0"),
         "created": m.get("created"),
         "message_model": {
             "terms": terms,
-            "idf": vec.tfidf.idf_.tolist(),
+            "idf": r7(vec.tfidf.idf_),
             "coef": coef,
-            "intercept": float(clf.intercept_[0]),
-            "mean": m["background_mean"].tolist(),
+            "intercept": r7([clf.intercept_[0]])[0],
+            "mean": r7(m["background_mean"]),
             "n_words": n_words,
+            "n_text": n_words + (len(char["terms"]) if char else 0),
+            "char": char,
             "engineered": list(F.ENGINEERED_NAMES),
-            "eng_scale": vec.scaler.scale_.tolist(),
+            "eng_scale": r7(vec.scaler.scale_),
             "eng_weight": vec.engineered_weight,
             "token_src": TOKEN_SRC,
             "threshold": m["threshold"],
@@ -54,6 +64,8 @@ def main():
                       "labels": F.URL_MODEL_LABELS},
         "patterns": P.PATTERNS,
         "entities": P.ENTITIES,
+        "fold": P.FOLD,
+        "leet": P.LEET,
         "text_flags": [{"name": n, "label": l, "why": w, "patterns": p} for n, l, w, p in F.TEXT_FLAGS],
         "negated_flags": F.NEGATED_FLAGS,
         "negation_src": F.NEGATION_SRC,
@@ -71,13 +83,16 @@ def main():
             "homoglyph": F.HOMOGLYPH,
             "official_local_words": F.OFFICIAL_LOCAL_WORDS,
             "lookalike_keywords": F.LOOKALIKE_KEYWORDS,
+            "free_hosts": F.FREE_HOSTS,
+            "attack_words": F.ATTACK_WORDS,
         },
         "infer": {
             "actions": PR.ACTIONS, "default_action": PR.DEFAULT_ACTION, "safe_action": PR.SAFE_ACTION,
             "floor_medium": sorted(PR.FLOOR_MEDIUM), "sender_pull": PR.SENDER_PULL,
-            "struct_floor": PR.STRUCT_FLOOR, "trusted_sender_discount": PR.TRUSTED_SENDER_DISCOUNT,
+            "struct_floor": PR.STRUCT_FLOOR, "request_floor": PR.REQUEST_FLOOR, "request_floor_flags": PR.REQUEST_FLOOR_FLAGS, "trusted_sender_discount": PR.TRUSTED_SENDER_DISCOUNT,
             "risky_request_flags": PR.RISKY_REQUEST_FLAGS, "max_urls": PR.MAX_URLS, "verdicts": PR.VERDICTS,
             "placeholders": sorted(["urltoken", "emailtoken", "moneytoken", "0"]),
+            "evidence_stop": PR.EVIDENCE_STOP, "wording_high": PR.WORDING_HIGH, "wording_medium": PR.WORDING_MEDIUM,
         },
         "psl": json.loads((ROOT / "campusguard" / "psl_rules.json").read_text()),
     }

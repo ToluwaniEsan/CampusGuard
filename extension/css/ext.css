@@ -1,14 +1,14 @@
 :root {
-  --bg: #f5f4fb; --panel: #ffffff; --panel-2: #f7f6fc; --line: #dddbee; --ink: #17153a; --ink-2: #4a4770; --ink-3: #7a77a0;
-  --head: #2b2470; --accent: #9b3f7d; --accent-ink: #fff; --accent-soft: #f6e6f0; --teal: #0e8a80;
-  --danger: #d62f4b; --danger-soft: #fde6ea; --warn: #b97a00; --warn-soft: #fff1d1; --ok: #188a55; --ok-soft: #dcf4e7;
+  --bg: #f4f3fa; --panel: #ffffff; --panel-2: #f7f6fc; --line: #e2e0f0; --ink: #17153a; --ink-2: #4a4770; --ink-3: #605c86;
+  --head: #241d66; --accent: #9b3f7d; --accent-ink: #fff; --accent-soft: #f6e6f0; --teal: #0a6f67;
+  --danger: #b81f3b; --danger-soft: #fde6ea; --warn: #855400; --warn-soft: #fff1d1; --ok: #126c42; --ok-soft: #dcf4e7;
   --mark-danger: rgba(214, 47, 75, .16); --mark-warn: rgba(214, 150, 0, .2); --mark-word: rgba(155, 63, 125, .14);
-  --f-display: "Prompt", "Segoe UI", system-ui, sans-serif; --f-body: "Segoe UI", system-ui, -apple-system, sans-serif;
+  --f-display: "Prompt", "Avenir Next", "Segoe UI", system-ui, sans-serif; --f-body: "Mukta", "Segoe UI", system-ui, -apple-system, sans-serif;
   --f-mono: "SFMono-Regular", Consolas, monospace;
 }
 @media (prefers-color-scheme: dark) {
-  :root { --bg: #0c0b22; --panel: #161538; --panel-2: #1c1a45; --line: #2c2a5c; --ink: #ecebff; --ink-2: #b9b6e6; --ink-3: #8783bb;
-    --head: #cdc6ff; --accent: #d77ab6; --accent-ink: #1a0b18; --accent-soft: #3a1d3b; --teal: #4fd1c5;
+  :root { --bg: #0c0b22; --panel: #161538; --panel-2: #1c1a45; --line: #2c2a5c; --ink: #ecebff; --ink-2: #b9b6e6; --ink-3: #a29fd4;
+    --head: #d5cfff; --accent: #d77ab6; --accent-ink: #1a0b18; --accent-soft: #3a1d3b; --teal: #4fd1c5;
     --danger: #ff6b82; --danger-soft: #3d1626; --warn: #f5c04a; --warn-soft: #3a2e12; --ok: #4ade9a; --ok-soft: #10342a;
     --mark-danger: rgba(255, 107, 130, .24); --mark-warn: rgba(245, 192, 74, .24); --mark-word: rgba(215, 122, 182, .2); color-scheme: dark; }
 }
@@ -28,7 +28,13 @@ button, input, textarea { font: inherit; color: inherit; }
 .field textarea { min-height: 120px; }
 .btn { border: 1px solid var(--line); background: var(--panel); border-radius: 9px; padding: 8px 12px; font-weight: 600; cursor: pointer; }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-.verdict { border-radius: 12px; padding: 12px; border: 1px solid var(--line); background: var(--panel); border-left: 6px solid var(--vcolor); }
+/* v2.3: same look as the main page: verdict first, score as a labelled number */
+.verdict { border-radius: 18px; padding: 14px 16px; border: 1px solid var(--line); background: var(--panel); box-shadow: 0 1px 2px rgba(23, 21, 58, .06), 0 8px 22px rgba(23, 21, 58, .10); }
+.badge { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px 6px 9px; border-radius: 999px; background: var(--vsoft); color: var(--vcolor); font: 600 15px/1 var(--f-display); }
+.badge svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.vhead { margin: 10px 0 0; font: 600 20px/1.2 var(--f-display); color: var(--head); }
+.score { margin-left: auto; text-align: right; color: var(--ink-2); font-size: 12px; line-height: 1.2; }
+.score b { display: block; font: 600 24px/1 var(--f-display); color: var(--vcolor); font-variant-numeric: tabular-nums; }
 .lvl-high { --vcolor: var(--danger); --vsoft: var(--danger-soft); }
 .lvl-medium { --vcolor: var(--warn); --vsoft: var(--warn-soft); }
 .lvl-low { --vcolor: var(--ok); --vsoft: var(--ok-soft); }

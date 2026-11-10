@@ -31,6 +31,29 @@ def analyzer(clean: str):
     return toks + [toks[i] + " " + toks[i + 1] for i in range(len(toks) - 1)]
 
 
+CHAR_MIN, CHAR_MAX = 3, 5
+
+
+def char_analyzer(clean: str):
+    """Letter groups inside each word (v2.3), so 'pasword' still shares most of its features
+    with 'password'. Same maths in the browser engine."""
+    out = []
+    for tok in TOKEN_RX.findall(clean):
+        if tok in PLACEHOLDERS or len(tok) < 3:
+            continue
+        w = " " + tok + " "
+        for n in range(CHAR_MIN, CHAR_MAX + 1):
+            for i in range(len(w) - n + 1):
+                out.append(w[i:i + n])
+    return out
+
+
+def r7(values):
+    """Round parameters to 7 significant digits. Both engines use these exact numbers, so the browser
+    model file stays small (v2.3) and Python and JavaScript still agree to the last digit."""
+    return [float(f"{float(x):.7g}") for x in values]
+
+
 def prepare(texts):
     """raw texts -> (normalised, cleaned, engineered DataFrame). Run once, reuse everywhere."""
     norms, cleans, rows = [], [], []
@@ -45,25 +68,42 @@ def prepare(texts):
 class EmailVectorizer:
     """TF-IDF over cleaned text + up-weighted engineered red-flag features."""
 
-    def __init__(self, max_features: int = 25000, engineered_weight: float = 2.0, min_df: int = 3):
+    def __init__(self, max_features: int = 25000, engineered_weight: float = 2.0, min_df: int = 3,
+                 char_features: int = 0, char_weight: float = 1.0):
         self.tfidf = TfidfVectorizer(analyzer=analyzer, min_df=min_df, max_df=0.6,
                                      max_features=max_features, sublinear_tf=True)
+        self.char = TfidfVectorizer(analyzer=char_analyzer, min_df=5, max_df=0.5, max_features=char_features,
+                                    sublinear_tf=True) if char_features else None
+        self.char_weight = char_weight
         self.scaler = MaxAbsScaler()
         self.engineered_weight = engineered_weight
 
     def fit(self, cleans, eng: pd.DataFrame):
         self.tfidf.fit(cleans)
+        if self.char is not None:
+            self.char.fit(cleans)
         self.scaler.fit(eng.values)
         return self
 
     def transform(self, cleans, eng: pd.DataFrame):
         a = self.tfidf.transform(cleans)
         b = self.scaler.transform(eng.values) * self.engineered_weight
-        return sparse.hstack([a, sparse.csr_matrix(b)]).tocsr()
+        blocks = [a]
+        if self.char is not None:
+            blocks.append(self.char.transform(cleans) * self.char_weight)
+        return sparse.hstack(blocks + [sparse.csr_matrix(b)]).tocsr()
+
+    @property
+    def n_text(self):
+        """Columns before the engineered red flags (words + letter groups)."""
+        return len(self.tfidf.idf_) + (len(self.char.idf_) if self.char is not None else 0)
 
     @property
     def feature_names(self):
-        return [f"word:{w}" for w in self.tfidf.get_feature_names_out()] + list(ENGINEERED_NAMES)
+        names = [f"word:{w}" for w in self.tfidf.get_feature_names_out()]
+        if self.char is not None:
+            names += [f"char:{w}" for w in self.char.get_feature_names_out()]
+        return names + list(ENGINEERED_NAMES)
 
 
 class SignConstrainedLogReg:

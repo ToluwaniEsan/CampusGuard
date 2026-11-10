@@ -7,3 +7,5 @@ __pycache__/
 tests/_*
 .DS_Store
 node_modules/
+data/campus_real/
+reports/campus_real_results.json

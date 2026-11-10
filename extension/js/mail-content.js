@@ -10,8 +10,8 @@
 
   const CSS = `
   :host { all: initial; }
-  .cg { font: 14px/1.45 "Segoe UI", system-ui, -apple-system, sans-serif; color: #17153a; background: #fff; border: 1px solid #dddbee;
-        border-left: 6px solid var(--c); border-radius: 12px; padding: 10px 12px; margin: 8px 0 12px; max-width: 720px;
+  .cg { font: 14px/1.45 "Mukta", "Segoe UI", system-ui, -apple-system, sans-serif; color: #17153a; background: #fff; border: 1px solid #dddbee;
+        border-radius: 16px; padding: 10px 12px; margin: 8px 0 12px; max-width: 720px;
         box-shadow: 0 1px 2px rgba(23,21,58,.06), 0 6px 18px rgba(23,21,58,.08); }
   .top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .logo { display: flex; align-items: center; gap: 6px; font-weight: 700; color: #2b2470; }
@@ -26,13 +26,13 @@
   .row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
   button { font: inherit; border: 1px solid #dddbee; background: #fff; color: #17153a; border-radius: 8px; padding: 5px 10px; cursor: pointer; font-weight: 600; }
   button.main { background: #9b3f7d; border-color: #9b3f7d; color: #fff; }
-  .x { margin-left: 6px; border: 0; padding: 2px 6px; color: #7a77a0; }
+  .x { margin-left: 6px; border: 0; padding: 2px 6px; color: #605c86; }
   .tip { margin-top: 8px; padding: 8px; background: #f7f6fc; border-radius: 8px; color: #4a4770; }
   @media (prefers-color-scheme: dark) {
     .cg { background: #161538; color: #ecebff; border-color: #2c2a5c; } .logo { color: #cdc6ff; } .sub, .tip { color: #b9b6e6; }
     .tip { background: #1c1a45; } button { background: #1c1a45; color: #ecebff; border-color: #2c2a5c; } .meter { background: #2c2a5c; }
   }`;
-  const COLORS = { high: ["#d62f4b", "#fde6ea"], medium: ["#b97a00", "#fff1d1"], low: ["#188a55", "#dcf4e7"] };
+  const COLORS = { high: ["#b81f3b", "#fde6ea"], medium: ["#855400", "#fff1d1"], low: ["#126c42", "#dcf4e7"] };
   const SHIELD = '<svg width="18" height="20" viewBox="0 0 34 38" aria-hidden="true"><path d="M17 1 32 7v11c0 9.5-6.4 16.4-15 19C8.4 34.4 2 27.5 2 18V7L17 1Z" fill="#4fd1c5"/><path d="m10.5 18.5 4.5 4.5 8.5-9" fill="none" stroke="#17153a" stroke-width="3.4" stroke-linecap="round"/></svg>';
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
@@ -99,7 +99,7 @@
     const flags = (r.red_flags || []).filter(f => f.flag !== "suspicious_wording").slice(0, 3);
     const n = (r.red_flags || []).length;
     ui.root.innerHTML = "<style>" + CSS + '</style><div class="cg" style="--c:' + c + ";--s:" + s + '">' +
-      '<div class="top"><span class="logo">' + SHIELD + 'CampusGuard</span><span class="pill">' + esc(r.verdict) + '</span><span class="pct">' + Math.round(r.risk_score * 100) + '% phishing risk</span><button class="x" title="Hide">✕</button></div>' +
+      '<div class="top"><span class="logo">' + SHIELD + 'CampusGuard</span><span class="pill">' + esc(r.verdict) + '</span><span class="pct" title="How closely this matches known scams. It ranks risk; it is not a probability.">Risk score ' + Math.round(r.risk_score * 100) + '/100</span><button class="x" title="Hide">✕</button></div>' +
       '<div class="meter"><i style="width:' + Math.round(r.risk_score * 100) + '%"></i></div>' +
       (r.risk_level === "low" ? '<div class="sub">No strong warning signs found.' + ((r.good_signs || [])[0] ? " " + esc(r.good_signs[0]) + "." : "") + "</div>"
         : '<div class="sub">' + n + " warning sign" + (n === 1 ? "" : "s") + " detected</div><ul>" + flags.map(f => "<li>" + esc(f.label) + "</li>").join("") + "</ul>") +

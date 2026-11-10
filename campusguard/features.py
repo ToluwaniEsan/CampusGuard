@@ -16,7 +16,7 @@ import re
 from collections import Counter
 from urllib.parse import urlsplit
 
-from .preprocess import RX, _compile, normalise_raw
+from .preprocess import RX, _compile, fold_text, normalise_raw
 from .psl import split_host
 
 # --------------------------------------------------------------------------------------
@@ -43,13 +43,20 @@ TRUSTED_BRANDS = {
 }
 # extra names that only appear in lookalike domains (the real service lives on another domain)
 LOOKALIKE_KEYWORDS = ["canvas-lms", "canvaslms", "bannerweb", "banner-self", "selfservice-aamu", "office365",
-                      "outlook365", "webmail-", "-webmail", "icloud-", "appleid", "apple-id", "paypal"]
+                      "outlook365", "webmail-", "-webmail", "icloud-", "appleid", "apple-id"]
 FREE_MAIL = ["gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "aol.com", "icloud.com", "proton.me",
              "protonmail.com", "mail.com", "gmx.com", "yandex.com", "rediffmail.com", "live.com", "msn.com",
              "ymail.com", "zoho.com"]
 SHORTENERS = ["bit.ly", "tinyurl.com", "goo.gl", "t.co", "ow.ly", "is.gd", "buff.ly", "rebrand.ly",
               "cutt.ly", "shorturl.at", "tiny.cc", "rb.gy", "t.ly", "s.id", "bit.do", "lnkd.in", "qrco.de",
               "tinyurl.at", "shorturl.gg", "v.gd", "x.co", "bl.ink", "short.io"]
+# free website/hosting services: anyone can put a page here in minutes (v2.3 link feature)
+FREE_HOSTS = ["000webhostapp.com", "weebly.com", "wixsite.com", "firebaseapp.com", "web.app", "github.io",
+              "glitch.me", "netlify.app", "vercel.app", "blogspot.com", "herokuapp.com", "pages.dev", "workers.dev",
+              "ngrok.io", "ngrok-free.app", "myshopify.com", "square.site", "godaddysites.com", "webflow.io",
+              "yolasite.com", "wordpress.com", "appspot.com", "azurewebsites.net", "r2.dev", "ipfs.io", "duckdns.org",
+              "repl.co", "replit.app", "jimdosite.com", "carrd.co", "framer.app", "surge.sh", "onrender.com",
+              "fly.dev", "translate.goog", "ddns.net", "hopto.org", "zapto.org", "site123.me", "strikingly.com"]
 SUSPICIOUS_TLDS = ["ru", "cn", "tk", "ml", "ga", "cf", "gq", "xyz", "top", "online", "site", "club", "live",
                    "icu", "work", "click", "link", "info", "biz", "buzz", "rest", "fit", "monster", "su", "pw",
                    "cc", "ws", "support", "services", "digital", "today", "vip", "shop", "store", "cfd", "sbs",
@@ -67,7 +74,10 @@ TEXT_FLAGS = [
         r"\bwithin (24|48|72|twenty[- ]four|forty[- ]eight) ?h(ou)?rs?\b", r"\bwithin \d+ (hours|days|minutes)\b",
         r"\bfinal (notice|warning|reminder|attempt)\b", r"\baction (is )?required\b", r"\bact now\b",
         r"\bexpir(e|es|ed|ing|ation)\b", r"\b(right away|without delay|by end of day|before \d)",
-        r"\btime[- ]sensitive\b", r"\blast (chance|warning)\b", r"\bfailure to (comply|verify|respond|update)\b"]),
+        r"\btime[- ]sensitive\b", r"\blast (chance|warning)\b", r"\bfailure to (comply|verify|respond|update)\b",
+        r"\bimmediat?ly\b|\bimediate?ly\b|\burgnt\b",
+        r"\burgente?\b|\binmediata(mente)?\b|\bde inmediato\b|\bultimo aviso\b|\baccion requerida\b|\bdentro de \d+ horas\b",
+        r"\bimmediatement\b|\bdernier avertissement\b|\baction requise\b|\bsous \d+ ?h(eures)?\b"]),
     ("threat", "Threat of losing access", "Real offices rarely threaten to shut your account by email.", [
         r"\b(will|may|would|shall) be (permanently )?(suspended|terminated|closed|locked|deactivated|disabled|deleted|blocked|cancell?ed|forfeited|withheld)\b",
         r"\b(suspend|terminat|deactivat|disabl|block|lock|restrict)\w*\b.{0,30}\b(account|mailbox|access)\b",
@@ -76,7 +86,12 @@ TEXT_FLAGS = [
         r"\b(unauthori[sz]ed|suspicious) (access|activity|login|sign[- ]in|transaction)\b",
         r"\bpermanently (deleted|closed|removed|disabled)\b", r"\b(placed )?on hold\b",
         r"\b(aid|disbursement|refund|payment|paycheck|scholarship|enrollment)\b.{0,25}\b(delayed|withheld|on hold|cancell?ed|forfeited)\b",
-        r"\bdropped from\b", r"\blegal action\b|\barrest\b|\bwarrant\b"]),
+        r"\bdropped from\b", r"\blegal action\b|\barrest\b|\bwarrant\b",
+        r"\b(susp[ea]?nd|terminat|deactivat|disabl|block|lock)\w*\b.{0,30}\b(acc?ou?nt|mailbox)\b",
+        r"\b(acc?ou?nt|mailbox)\b.{0,30}\b(susp[ea]?nde?d|deactivated|disabled|blocked|locked|closed)\b",
+        r"\b(cuenta|correo|acceso)\b.{0,40}\b(suspendid[ao]|bloquead[ao]|cancelad[ao]|desactivad[ao]|cerrad[ao]|eliminad[ao])\b",
+        r"\b(sera|seran|ha sido|han sido)\s+(suspendid|bloquead|cancelad|desactivad|cerrad|eliminad)[ao]s?\b",
+        r"\b(compte|acces|messagerie)\b.{0,40}\b(suspendu|bloque|desactive|ferme|supprime)e?s?\b"]),
     ("credential_request", "Asks for your password or login",
      "No campus office will ask you to confirm a password through a link or reply.", [
         r"\bpassword\b", r"\b(user ?name|user ?id|login (details|credentials|information))\b",
@@ -84,20 +99,29 @@ TEXT_FLAGS = [
         r"\bconfirm (your|the)? ?(account|identity|information|details|email|password|credentials)\b",
         r"\b(update|validate|re-?activate|restore|unlock|re-?validate)\s+(your|the)?\s*(account|information|details|mailbox|email|access)\b",
         r"\b(log ?in|sign ?in|log on)\b", r"\bcredentials?\b",
-        r"\bmfa code\b|\bverification code\b|\bone[- ]time (code|passcode|password)\b|\b(\d|six|four)[- ]digit (code|number|pin)\b"]),
+        r"\bmfa code\b|\bverification code\b|\bone[- ]time (code|passcode|password)\b|\b(\d|six|four)[- ]digit (code|number|pin)\b",
+        r"\bpass?wo?r?d\b|\bpasw[o]?rd\b|\bpssword\b|\bpasswrd\b",
+        r"\b(verfy|verifiy|verifi|veryfy|vrify|confrim|confim)\b",
+        r"\bcontrasena\b|\bclave( de acceso)?\b|\b(verifique|verificar|verifica|confirme|confirmar|actualice|actualizar)\s+(su|tu|sus|tus)\s+(cuenta|contrasena|datos|informacion|identidad|clave|correo)\b",
+        r"\b(inicie|iniciar|inicia) sesion\b|\bcodigo de (verificacion|seguridad|acceso)\b|\bnombre de usuario\b",
+        r"\bmot de passe\b|\bidentifiants?\b|\b(verifiez|verifier|confirmez|confirmer|mettez a jour)\s+(votre|vos|le|la)\s+(compte|identite|informations|mot de passe|adresse)\b",
+        r"\bcode de (verification|securite)\b|\bconnectez-vous\b"]),
     ("sensitive_info", "Requests personal or banking details",
      "Requests for SSN, bank or card numbers by email are a classic scam.", [
         r"\bsocial security\b", r"\bssn\b", r"\bbank(ing)? (account|details|information|info)\b",
         r"\brouting number\b", r"\baccount number\b", r"\bcredit card\b", r"\bdebit card\b",
         r"\bcard (number|details)\b", r"\bcvv\b", r"\bdate of birth\b",
         r"\b(driver'?s licen[cs]e|passport|government[- ]issued id|photo id)\b",
-        r"\bdirect deposit\b", r"\bgift ?cards?\b", r"\bwire transfer\b", r"\bzelle\b|\bcash ?app\b|\bvenmo\b|\bbitcoin\b|\bcrypto\b"]),
+        r"\bdirect deposit\b", r"\bwire transfer\b", r"\bbitcoin\b|\bcrypto\b",
+        r"\bseguro social\b|\bcuenta bancaria\b|\btarjeta de (credito|debito)\b|\bnumero de (cuenta|tarjeta)\b|\bfecha de nacimiento\b",
+        r"\bnumero de securite sociale\b|\bcompte bancaire\b|\bcarte (bancaire|de credit)\b|\bdate de naissance\b"]),
     ("click_cta", "Pushes you to click a link or open a file",
      "The whole message exists to get you to one link or attachment.", [
         r"\bclick (here|below|the link|on the link|this link|the button)\b",
         r"\b(follow|use|visit|open) the (link|url|attachment|document|secure link)\b",
         r"\b(click|tap) (to|and)\b", r"\bopen the attached\b", r"\bdownload the attach",
-        r"\bview (document|message|invoice|statement)s?\b", r"\bclick\b", r"\breview (the )?document\b"]),
+        r"\bview (document|message|invoice|statement)s?\b", r"\bclick\b", r"\breview (the )?document\b",
+        r"\b(haga|haz|de) clic\b|\bpulse aqui\b|\benlace\b", r"\bcliquez\b|\bclique(z)? ici\b|\blien ci-dessous\b"]),
     ("impersonation", "Claims to be an official office or service",
      "Phishers borrow the name of IT, Financial Aid, banks and big brands.", [
         r"\b(it|technical|tech) (help ?desk|support|department|team|services)\b",
@@ -111,7 +135,8 @@ TEXT_FLAGS = [
         r"\$ ?\d[\d,]*", r"\b(usd|us\$) ?\d", r"\b(prize|winner|won|lottery|jackpot|reward)\b",
         r"\b(grant|stipend|scholarship|refund|reimbursement|compensation)\b",
         r"\b(million|thousand) (dollars|usd|pounds)\b", r"\b(inheritance|beneficiary|next of kin|fund transfer)\b",
-        r"\bfree (money|gift|iphone)\b", r"\b(claim|receive) your\b"]),
+        r"\bfree (money|gift|iphone)\b", r"\b(claim|receive) your\b",
+        r"\b(premio|ganador|ganaste|reembolso|beca|herencia)\b", r"\b(gagnant|remboursement|heritage|bourse)\b"]),
     ("job_scam", "Easy remote job offer", "Unsolicited, flexible, high-pay jobs are a top student scam.", [
         r"\bpart[- ]time\b", r"\b(work|working) from home\b", r"\bremote (job|position|work|internship)\b",
         r"\bpersonal assistant\b", r"\bflexible (hours|schedule)\b",
@@ -123,11 +148,13 @@ TEXT_FLAGS = [
      "Legit people and offices never need you to send a password, code, card or ID number in a message.", [
         r"\b(send|reply with|provide|give|enter|submit|share|text|tell me|confirm|forward|type in|input)\b[^.!?\n]{0,40}\b(password|login|log-in|credentials|ssn|social security|bank|card number|cvv|date of birth|student id|id number|username|user name|pin|passcode|verification code|6[- ]digit code|the code|fsa id|routing)\b",
         r"\b(password|login|ssn|bank login|card details|verification code|the code)\b[^.!?\n]{0,25}\b(to me|so (i|we) can|to verify|to confirm|to receive)\b",
-        r"\b(code|pin|passcode)\b[^?]{0,90}\b(send|text|give|share|forward|tell|read)\b[^.!?\n]{0,12}\b(it|them|that|the numbers)\b[^.!?\n]{0,12}\b(to me|back|over)\b"]),
+        r"\b(code|pin|passcode)\b[^?]{0,90}\b(send|text|give|share|forward|tell|read)\b[^.!?\n]{0,12}\b(it|them|that|the numbers)\b[^.!?\n]{0,12}\b(to me|back|over)\b",
+        r"\b(envie|envienos|enviar|responda|respondiendo|proporcione|ingrese|comparta|confirme|verifique)\b[^.!?\n]{0,40}\b(contrasena|clave|codigo|usuario|seguro social|tarjeta|cuenta bancaria)\b",
+        r"\b(envoyez|repondez|repondant|fournissez|saisissez|indiquez|confirmez)\b[^.!?\n]{0,40}\b(mot de passe|code|identifiant|carte|compte bancaire)\b"]),
     ("upfront_payment", "Asks you to pay first or move money",
      "Paying a fee, buying gift cards or forwarding money to 'unlock' something is how advance-fee scams work.", [
         r"\b(processing|delivery|application|induction|release|redelivery|handling|registration|activation|clearance|shipping|transfer) fee\b",
-        r"\b(pay|paying|send|buy|purchase)\b[^.!?\n]{0,30}\b(gift ?cards?|itunes|steam cards?|bitcoin|fee|deposit|fine)\b",
+        r"\b(pay|paying|send|buy|purchase)\b[^.!?\n]{0,30}\b(bitcoin|fee|deposit|fine)\b",
         r"\b(send|return|refund|give) (it|the (money|extra|rest|balance|difference)) back\b|\bsend the (rest|extra|balance|difference)\b",
         r"\b(deposit|cash) (the|this|a) (check|cheque)\b|\bcashier'?s check\b"]),
     ("generic_greeting", "Generic greeting", "Messages from real offices usually use your name.", [
@@ -137,8 +164,25 @@ TEXT_FLAGS = [
      "Legit offices do not ask for secrecy or replies to personal accounts.", [
         r"\b(confidential|strictly private|keep (this|it) (secret|private|between))\b",
         r"\b(reply|respond|send|contact) (to|via|on|me on) (my|this|the) (personal|private|alternative|other) (email|address|number)\b",
-        r"\balternative email\b", r"\bpersonal email\b", r"\btext me\b|\bwhatsapp\b|\btelegram\b|\bsignal app\b",
-        r"\bare you available\b", r"\bquick favou?r\b"]),
+        r"\balternative email\b", r"\bpersonal email\b", r"\btext me\b|\bwhatsapp\b|\btelegram\b|\bsignal app\b"]),
+    ("gift_card_request", "Asks you to buy gift cards or send card codes",
+     "No professor, boss or office will ask you to buy gift cards and send the codes. Once the codes are sent, the money is gone.", [
+        r"\b(buy|purchase|buying|purchasing)\b[^.!?\n]{0,50}\b(gift ?cards?|itunes( cards?)?|google play( cards?)?|steam( wallet)?( cards?)?|apple cards?|ebay cards?|amazon cards?|visa gift|vanilla (gift )?cards?)\b",
+        r"\b(can you|could you|i need you to|need you to|please|i want you to|help me|would you)\b[^.!?\n]{0,30}\b(get|pick up|grab|order|go get)\b[^.!?\n]{0,50}\b(gift ?cards?|itunes( cards?)?|google play( cards?)?|steam( wallet)?( cards?)?|apple cards?|ebay cards?|amazon cards?|visa gift|vanilla (gift )?cards?)\b",
+        r"\b(gift ?cards?|itunes|google play|steam)\b[^.!?\n]{0,60}\b(codes?|pins?|card numbers?|scratch|back of)\b",
+        r"\bscratch\w*\b[^.!?\n]{0,40}\b(back|card|cards|code|codes|pin|them|it)\b",
+        r"\b(send|text|email|forward)\b[^.!?\n]{0,25}\b(pictures?|photos?|pics?|images?|snapshots?|screenshots?)\b[^.!?\n]{0,15}\b(of )?(the )?(cards?|codes?|back|receipts?)\b",
+        r"\b(redemption|claim) codes?\b",
+        r"\b(i need|i'll need|need you to get|we need)\b[^.!?\n]{0,30}\b(gift ?cards?|itunes( cards?)?|google play( cards?)?|steam( wallet)?( cards?)?|apple cards?|amazon cards?)\b",
+        r"\bsend\b[^.!?\n]{0,15}\b(the|those|all the) (card )?(codes|pins)\b",
+        r"\b(tarjetas? de regalo|cartes?[- ]cadeaux?)\b"]),
+    ("unavailable_pretext", "Sender says they can't talk and wants a quick favor",
+     "Impersonators say they are in a meeting or can't call so you won't check with the real person.", [
+        r"\bare you (available|around|free)\b", r"\bquick (favou?r|task|errand)\b", r"\b(do|can) you do me a favou?r\b",
+        r"\b(i'?m|i am|currently|stuck|tied up) (in|on) (a )?(meeting|conference( call)?|call|flight|seminar|lecture)\b",
+        r"\b(can'?t|cannot|can not|unable to|won'?t be able to) (talk|call|take (any )?calls|answer (the )?phone|speak)\b",
+        r"\b(busy|tied up) (right )?now\b", r"\bkeep (this|it) between us\b|\bdiscreet(ly)?\b|\bsurprise for\b",
+        r"\b(estoy|me encuentro) en una reunion\b|\bno puedo (hablar|llamar)\b", r"\bje suis en reunion\b|\bje ne peux pas (parler|appeler)\b"]),
 ]
 TEXT_FLAG_NAMES = [f[0] for f in TEXT_FLAGS]
 TEXT_FLAG_RX = {name: [_compile(p, "i") for p in pats] for name, _, _, pats in TEXT_FLAGS}
@@ -260,11 +304,86 @@ def parse_url(url: str):
     return rest, host.lower().strip("."), port, path, query
 
 
+VOWELS = "aeiou"
+
+
+def brand_distance(sld: str, registered: str) -> int:
+    """Edit distance from the domain name to the closest trusted name, capped at 3 (v2.3)."""
+    trusted = TRUSTED_CAMPUS_DOMAINS + list(TRUSTED_BRANDS)
+    if not sld or registered in trusted:
+        return 3
+    s_n = homoglyph(sld).replace("-", "")
+    best = 3
+    for dom in trusted:
+        base = dom.split(".")[0]
+        if len(base) < 4 and base != "aamu":
+            continue
+        best = min(best, lev(s_n, base))
+    return best
+
+
+def letter_shape(sld: str):
+    letters = [c for c in sld if "a" <= c <= "z"]
+    vow = sum(c in VOWELS for c in letters)
+    run = best = 0
+    for c in sld:
+        if "a" <= c <= "z" and c not in VOWELS:
+            run += 1
+            best = max(best, run)
+        else:
+            run = 0
+    return (vow / len(letters) if letters else 0.0), best
+
+
+# words scammers bolt onto a trusted name: paypal-secure, aamuedu, myaamu-portal (v2.3)
+ATTACK_WORDS = ["secure", "security", "login", "logon", "signin", "verify", "verification", "support", "account",
+                "accounts", "help", "helpdesk", "update", "service", "services", "online", "center", "centre", "alert",
+                "alerts", "auth", "id", "my", "portal", "billing", "pay", "payment", "wallet", "edu", "web", "webmail",
+                "mail", "mailbox", "team", "app", "access", "confirm", "recovery", "unlock", "official", "notice",
+                "claim", "refund", "review", "document", "docs", "share", "office", "student", "aid", "finaid",
+                "financialaid", "gov", "redelivery", "delivery", "track", "tracking", "customer", "care", "admin",
+                "it", "its", "sso", "owa", "reset", "password", "bank", "card", "gift", "prize", "reward", "bonus",
+                "free", "promo", "now", "info", "net", "usa", "us", "check", "safe", "protect", "member", "members"]
+
+
+def _attack_part(rem: str) -> bool:
+    rem = rem.strip("-.0123456789")
+    return rem == "" or rem in ATTACK_WORDS or any(len(w) >= 3 and (rem.startswith(w) or rem.endswith(w)) for w in ATTACK_WORDS)
+
+
 def lookalike_of(sld: str, sub: str, registered: str) -> str:
-    """Return the trusted name being imitated, or ''."""
+    """Return the trusted name being imitated, or ''. v2.3: stricter, so real sites that merely
+    contain a brand-like word (techtarget.com, livejournal.com, google.co.uk) are no longer flagged."""
     trusted = TRUSTED_CAMPUS_DOMAINS + list(TRUSTED_BRANDS)
     if not registered or registered in trusted:
         return ""
+    tld = registered.rsplit(".", 1)[-1]
+    risky_host = (tld in SUSPICIOUS_TLDS or registered in FREE_HOSTS or "-" in sld
+                  or any(w in sld for w in SENSITIVE_URL_WORDS))
+    sld_h = homoglyph(sld).replace("rn", "m").replace("vv", "w")
+    sld_n = sld_h.replace("-", "")
+    sub_h = homoglyph(sub.lower())
+    sub_tokens = [t for t in re.split(r"[.-]", sub_h) if t]
+    for dom in trusted:
+        base = dom.split(".")[0]
+        if len(base) < 4 and base != "aamu":
+            continue
+        # 1. the trusted name plus decoration: paypal-secure, aamuedu, myaamu-portal
+        if base in sld_n and sld_n != base and ("-" in sld or _attack_part(sld_n.replace(base, "", 1))):
+            return dom
+        # 2. the same name spelled with look-alike characters (paypa1, aarnu), or on a risky ending
+        if sld_n == base and (sld != base or tld in SUSPICIOUS_TLDS):
+            return dom
+        # 3. a near-miss spelling of a long name (amazom, microsfot)
+        if len(base) >= 6 and len(sld_n) >= 5 and sld_n != base and lev(sld_n, base) <= (1 if len(base) < 9 else 2):
+            return dom
+        # 4. the trusted name hidden in the subdomain of someone else's site
+        if dom in sub_h or (base in sub_tokens and risky_host):
+            return dom
+    for kw in LOOKALIKE_KEYWORDS:
+        if kw in sld or kw in sub.lower():
+            return kw.strip("-")
+    return ""
     sld_n = homoglyph(sld).replace("-", "")
     sub_n = homoglyph(sub.lower())
     for dom in trusted:
@@ -300,6 +419,7 @@ def url_struct(url: str) -> dict:
     host_tokens = [t for t in re.split(r"[.-]", host) if t]
     look = "" if ip else lookalike_of(sld, sub, registered)
     digits = sum(ch.isdigit() for ch in rest)
+    vowel_ratio, cons_run = (0.0, 0) if ip else letter_shape(sld)
     return {
         "host": host, "registered_domain": registered, "lookalike_target": look,
         "ip_host": int(ip),
@@ -329,6 +449,16 @@ def url_struct(url: str) -> dict:
         "php_or_html": int(bool(FILE_RX.search(path_q))),
         "campus_domain": int(registered in TRUSTED_CAMPUS_DOMAINS),
         "trusted_brand": int(registered in TRUSTED_BRANDS),
+        # v2.3 link features
+        "brand_dist": 3 if ip else brand_distance(sld, registered),
+        "sld_len": 0 if ip else len(sld),
+        "vowel_ratio": vowel_ratio,
+        "consonant_run": cons_run,
+        "digits_sld": 0 if ip else sum(ch.isdigit() for ch in sld),
+        "tld_len": len(tld),
+        "n_params": (query.count("&") + 1) if query else 0,
+        "path_hyphens": path.count("-"),
+        "free_host": int(any(host == f or host.endswith("." + f) for f in FREE_HOSTS)),
     }
 
 
@@ -336,7 +466,8 @@ URL_MODEL_FEATURES = ["ip_host", "lookalike", "n_subdomains", "shortener", "susp
                       "at_symbol", "double_slash", "hyphen_host", "digits_host", "digit_ratio", "punycode",
                       "has_port", "url_len", "host_len", "path_depth", "query_len", "n_special", "n_dots",
                       "longest_host_token", "host_entropy", "sensitive_words", "brand_in_path", "brand_in_sub",
-                      "php_or_html"]
+                      "php_or_html", "brand_dist", "sld_len", "vowel_ratio", "consonant_run", "digits_sld", "tld_len",
+                      "n_params", "path_hyphens", "free_host"]
 URL_MODEL_LABELS = {
     "ip_host": "Uses a raw IP address instead of a name",
     "lookalike": "Domain imitates a trusted name",
@@ -363,6 +494,15 @@ URL_MODEL_LABELS = {
     "brand_in_path": "Brand name buried in the path, not the domain",
     "brand_in_sub": "Brand or school name in a subdomain",
     "php_or_html": "Points straight at a script or file",
+    "brand_dist": "Domain is spelled almost like a trusted name",
+    "sld_len": "Unusually long domain name",
+    "vowel_ratio": "Domain name doesn't read like a word",
+    "consonant_run": "Random-looking letters in the domain",
+    "digits_sld": "Numbers mixed into the domain name",
+    "tld_len": "Unusual web address ending",
+    "n_params": "Lots of tracking or query parameters",
+    "path_hyphens": "Long hyphenated path",
+    "free_host": "Hosted on a free website service anyone can use",
 }
 
 
@@ -379,15 +519,16 @@ def find_text_flags(text: str) -> dict:
     """{flag: [(start, end, match)]}. Credential/personal-data cues inside a reassurance
     ('we will never ask for your password') are ignored."""
     out = {}
+    folded = fold_text(text)      # same length: offsets point into `text`
     for name in TEXT_FLAG_NAMES:
         spans = []
         for rx in TEXT_FLAG_RX[name]:
-            for m in rx.finditer(text):
+            for m in rx.finditer(folded):
                 if m.end() == m.start():
                     continue
-                if name in NEGATED_FLAGS and NEGATION_RX.search(_sentence(text, m.start())):
+                if name in NEGATED_FLAGS and NEGATION_RX.search(_sentence(folded, m.start())):
                     continue
-                spans.append((m.start(), m.end(), m.group(0)))
+                spans.append((m.start(), m.end(), text[m.start():m.end()]))
         spans.sort(key=lambda s: (s[0], -s[1]))
         merged = []
         for s in spans:

@@ -38,10 +38,33 @@
       <div class="dock-view" aria-hidden="true"><div style="min-width:0"><small>You pasted</small><span class="t" id="dock-text"></span></div><span class="edit"><svg class="ico"><use href="#h-pen"/></svg></span></div>
     </div>
     <div class="go-wrap" id="go-wrap"><button type="button" class="go" id="go">Check it <svg class="ico"><use href="#h-arrow"/></svg></button></div>
+    <p class="privacy" id="privacy"><svg class="ico" aria-hidden="true"><use href="#h-lock"/></svg>Checked on your device. Nothing is uploaded or saved, and links are never opened.</p>
+    <div class="extras" id="extras">
+      <div class="examples" role="group" aria-label="Try an example">
+        <span>Try one:</span>
+        <button type="button" class="ex" data-ex="aid">Fake aid email</button>
+        <button type="button" class="ex" data-ex="gift">Gift-card text</button>
+        <button type="button" class="ex" data-ex="link">Odd link</button>
+        <button type="button" class="ex" data-ex="safe">Real notice</button>
+      </div>
+      <button type="button" class="practice-btn" id="practice-open"><svg class="ico" aria-hidden="true"><use href="#h-target"/></svg>Practice: spot the scam</button>
+    </div>
   </div>
 
-  <section class="results" id="results" hidden aria-live="polite"></section>
+  <section class="results" id="results" hidden></section>
+  <div class="sr-only" id="announce" aria-live="polite" aria-atomic="true"></div>
 </main>
+
+<div class="practice" id="practice" hidden role="dialog" aria-modal="true" aria-labelledby="practice-h">
+  <div class="practice-card">
+    <div class="practice-top">
+      <h2 id="practice-h">Spot the scam</h2>
+      <div class="pscore" id="pscore" aria-live="polite"></div>
+      <button type="button" class="practice-x" id="practice-close" aria-label="Close practice"><svg class="ico" aria-hidden="true"><use href="#h-x"/></svg></button>
+    </div>
+    <div id="practice-body"></div>
+  </div>
+</div>
 
 <button type="button" class="theme motion" id="motion" aria-label="Turn animations on or off" aria-pressed="true">
   <svg class="ico on"><use href="#h-spark"/></svg><svg class="ico off"><use href="#h-nospark"/></svg>

@@ -33,6 +33,8 @@ REPORTS = ROOT / "reports"
 MODELS.mkdir(exist_ok=True)
 REPORTS.mkdir(exist_ok=True)
 SEED = 42
+MAX_UNSEEN_FPR = 0.035
+CHAR_FEATURES, CHAR_WEIGHT = 0, 1.5   # letter groups: tested in v2.3, off (worse on unseen sources)
 HAM_SOURCES = ["spamassassin_ham", "enron_ham", "ceas_ham", "ling_ham", "sms_ham"]
 
 
@@ -57,9 +59,9 @@ def eng(df):
 
 
 def fit(df, kind="lr", C=3.0):
-    vec = EmailVectorizer().fit(df.clean.tolist(), eng(df))
+    vec = EmailVectorizer(char_features=CHAR_FEATURES, char_weight=CHAR_WEIGHT).fit(df.clean.tolist(), eng(df))
     X = vec.transform(df.clean.tolist(), eng(df))
-    clf = make_lr(C, n_words=len(vec.tfidf.idf_)) if kind == "lr" else make_rf(SEED)
+    clf = make_lr(C, n_words=vec.n_text) if kind == "lr" else make_rf(SEED)
     clf.fit(X, df.label.values)
     return vec, clf
 
@@ -111,14 +113,16 @@ def main():
         loso_scores.append(pd.DataFrame({"y": ev.label.values, "p": p, "src": S}))
         loso[S] = {"unseen_ham_n": len(unseen)}
     L = pd.concat(loso_scores)
-    # pooled unseen-source FPR <= 5% (deck target), never below 0.5
-    deploy_thr = pick_threshold(L.y, L.p, max_fpr=0.05, floor=0.5)
+    # v2.3: pooled unseen-source FPR <= 3.5% (deck target was 5%; tightened for improvement 4,
+    # fewer false alarms on casual texts), never below 0.5
+    deploy_thr = pick_threshold(L.y, L.p, max_fpr=MAX_UNSEEN_FPR, floor=0.5)
+    L.to_pickle(PROC / "loso_scores.pkl")
     for S in HAM_SOURCES:
         s = L[L.src == S]
         loso[S].update(metrics(s.y, s.p, deploy_thr))
         print("LOSO", S, loso[S], flush=True)
     R["threshold"] = {"deployment": deploy_thr, "high": max(0.8, deploy_thr + 0.15),
-                      "rule": "lowest threshold with pooled unseen-legit-source FPR <= 5%, floor 0.5"}
+                      "rule": "lowest threshold with pooled unseen-legit-source FPR <= 3.5%, floor 0.5"}
     R["leave_one_ham_source_out"] = loso
 
     # ---------------- 3. leave-one-scam-family-out
@@ -158,7 +162,7 @@ def main():
     from campusguard.model import prepare
     n_, c_, e_ = prepare(camp.text.tolist())
     camp = pd.concat([camp.reset_index(drop=True), e_], axis=1).assign(clean=c_)
-    for name, (v, c) in {"v1_deck_data": (vv1, cv1), "v2_2_current": (vv2, cv2)}.items():
+    for name, (v, c) in {"v1_deck_data": (vv1, cv1), "current": (vv2, cv2)}.items():
         comp[name] = {
             "held_out_test_v2": metrics(te.label, score(v, c, te), deploy_thr),
             "unseen_CEAS+Ling_ham_FPR": metrics(unseen_ceas_ling.label, score(v, c, unseen_ceas_ling), deploy_thr)["false_positive_rate"],
@@ -167,7 +171,7 @@ def main():
         }
         print("COMPARE", name, json.dumps(comp[name])[:400], flush=True)
     R["v1_vs_v2"] = comp
-    R["test_final_refit"] = comp["v2_2_current"]["held_out_test_v2"]
+    R["test_final_refit"] = comp["current"]["held_out_test_v2"]
 
     # ---------------- 6. URL model (domain-grouped split)
     u = pd.read_pickle(PROC / "urls_balanced.pkl")
@@ -195,7 +199,7 @@ def main():
     bg_mean = np.asarray(X_full.mean(axis=0)).ravel()
     joblib.dump({"vectorizer": vv2, "model": cv2, "kind": kind, "C": C,
                  "threshold": R["threshold"]["deployment"], "high_threshold": R["threshold"]["high"],
-                 "background_mean": bg_mean, "version": "2.2",
+                 "background_mean": bg_mean, "version": "2.3",
                  "trained_on": "Nazario + fraud scams + synthetic campus lures vs SpamAssassin/Enron/CEAS/Ling ham + synthetic campus notices",
                  "created": time.strftime("%Y-%m-%d")}, MODELS / "campusguard_message_model.joblib", compress=3)
     joblib.dump({"model": umod, "kind": best_url, "features": URL_MODEL_FEATURES, "exported": exported,

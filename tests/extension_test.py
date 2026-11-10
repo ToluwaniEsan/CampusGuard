@@ -1,7 +1,8 @@
 """Loads the unpacked extension in Chromium, tests the popup and the Gmail panel on a mock Gmail page."""
-import asyncio, sys, tempfile
+import asyncio, os, sys, tempfile
+from pathlib import Path
 from playwright.async_api import async_playwright
-EXT = "/home/claude/campusguard/extension"
+EXT = str(Path(__file__).resolve().parents[1] / "extension")
 OUT = sys.argv[1] if len(sys.argv) > 1 else "/tmp/claude-0/ext"
 GMAIL = """<html><head><title>Inbox - Gmail</title></head><body style="font-family:Arial;margin:0">
 <div style="display:flex"><div style="width:220px;background:#f6f8fc;height:100vh;padding:16px">Inbox<br>Starred<br>Sent</div>
@@ -15,7 +16,7 @@ GMAIL = """<html><head><title>Inbox - Gmail</title></head><body style="font-fami
 async def main():
     async with async_playwright() as p:
         d = tempfile.mkdtemp()
-        ctx = await p.chromium.launch_persistent_context(d, headless=False, executable_path="/opt/pw-browsers/chromium-1194/chrome-linux/chrome", args=["--no-first-run", f"--disable-extensions-except={EXT}", f"--load-extension={EXT}"])
+        ctx = await p.chromium.launch_persistent_context(d, headless=False, executable_path=os.environ.get("CG_CHROMIUM") or None, args=["--no-first-run", f"--disable-extensions-except={EXT}", f"--load-extension={EXT}"])
         sw = ctx.service_workers[0] if ctx.service_workers else await ctx.wait_for_event("serviceworker")
         ext_id = sw.url.split("/")[2]; print("extension id", ext_id)
         errs = []
@@ -25,7 +26,7 @@ async def main():
         await pg.goto(f"chrome-extension://{ext_id}/popup.html")
         await pg.fill("#text", "Hey it's Jay, I got locked out and they sent the 6 digit code to your number by mistake. Can you text it to me real quick?")
         await pg.click("#check"); await pg.wait_for_timeout(600)
-        print("popup verdict:", await pg.inner_text(".pill"))
+        print("popup verdict:", await pg.inner_text(".badge"))
         await pg.screenshot(path=f"{OUT}/popup.png", full_page=True)
         # report page
         await pg.click("#full"); await pg.wait_for_timeout(1200)

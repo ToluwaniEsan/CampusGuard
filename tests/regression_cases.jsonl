@@ -1,0 +1,15 @@
+{"id":"giftcard_prof_1","label":1,"min_level":"medium","sender":"Dr. Williams <prof.williams.aamu@gmail.com>","text":"Hi, are you available? I need you to get some Apple gift cards for a student award today. I'm in a meeting and can't call. Scratch the back and send me pictures of the codes. I will reimburse you. Dr. Williams"}
+{"id":"giftcard_prof_2","label":1,"min_level":"medium","sender":"Prof. Johnson <pjohnson.office@gmail.com>","text":"Quick favor - I need 4 Google Play gift cards of $100 each for the department event. Send the codes when you get them. Thanks"}
+{"id":"giftcard_nosender","label":1,"min_level":"medium","text":"Hello, I'm tied up in a conference call right now. Can you pick up three $50 Steam gift cards for me at the campus store? Text me the card numbers once you scratch them. I'll pay you back this evening."}
+{"id":"spaced_password","label":1,"min_level":"medium","need_flag":"credential_request","text":"Your account will be s u s p e n d e d today. V e r i f y your p a s s w o r d by replying to this email."}
+{"id":"spanish_nolink","label":1,"min_level":"medium","text":"Su cuenta será suspendida hoy. Verifique su contraseña respondiendo a este correo."}
+{"id":"french_nolink","label":1,"min_level":"medium","text":"Votre compte sera désactivé aujourd'hui. Confirmez votre mot de passe en répondant à ce message."}
+{"id":"misspell_nolink","label":1,"min_level":"medium","text":"Yuor acount will be suspnded today. Plese verfy your pasword by replyng to this emial."}
+{"id":"leet_password","label":1,"min_level":"medium","need_flag":"credential_request","text":"Your mailbox is full. Confirm your passw0rd now to keep receiving mail or your acc0unt will be closed."}
+{"id":"cyrillic_password","label":1,"min_level":"medium","need_flag":"credential_request","text":"Your аccount will be suspended. Verify your раssword today."}
+{"id":"venmo_paid","label":0,"max_level":"low","sender":"Venmo <venmo@venmo.com>","text":"Jordan Lee paid you $18.00. Note: pizza. The money is in your Venmo balance. View in the Venmo app."}
+{"id":"cs405_reminder","label":0,"max_level":"low","no_flag":"suspicious_wording","sender":"Dr. Smith <jsmith@aamu.edu>","text":"Reminder: the CS 405 project draft is due Friday at 11:59pm on Canvas. Office hours are Thursday 2-4pm."}
+{"id":"friend_text","label":0,"max_level":"low","text":"yo you coming to the game tonight? lmk so I can save you a seat"}
+{"id":"friend_pizza_money","label":0,"max_level":"low","text":"hey can you venmo me $12 for the pizza from last night? no rush"}
+{"id":"raffle_giftcard","label":0,"max_level":"low","sender":"Student Activities <sga@aamu.edu>","text":"Congratulations to everyone who joined Homecoming week! Raffle winners can pick up their $25 Amazon gift card at the SGA office in the Student Center, Monday to Friday 9am-4pm."}
+{"id":"spanish_ham","label":0,"max_level":"low","text":"Hola mamá, ya llegué a la residencia. Mañana tengo examen de química, te llamo el domingo."}

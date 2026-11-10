@@ -2,9 +2,9 @@
    Layout: single centred column; the box docks to the top-right of the results once checked. */
 :root {
   --bg: #f4f3fa; --panel: #ffffff; --panel-2: #f7f6fc; --line: #e2e0f0;
-  --ink: #17153a; --ink-2: #4a4770; --ink-3: #8380a6; --head: #241d66;
-  --accent: #9b3f7d; --accent-ink: #ffffff; --accent-soft: #f6e6f0; --teal: #0e8a80;
-  --danger: #d62f4b; --danger-soft: #fde6ea; --warn: #b97a00; --warn-soft: #fff1d1; --ok: #188a55; --ok-soft: #dcf4e7;
+  --ink: #17153a; --ink-2: #4a4770; --ink-3: #605c86; --head: #241d66;
+  --accent: #9b3f7d; --accent-ink: #ffffff; --accent-soft: #f6e6f0; --teal: #0a6f67;
+  --danger: #b81f3b; --danger-soft: #fde6ea; --warn: #855400; --warn-soft: #fff1d1; --ok: #126c42; --ok-soft: #dcf4e7;
   --lift: 0 2px 4px rgba(23, 21, 58, .05), 0 18px 50px rgba(23, 21, 58, .14);
   --lift-sm: 0 1px 2px rgba(23, 21, 58, .06), 0 8px 22px rgba(23, 21, 58, .10);
   --mark-danger: rgba(214, 47, 75, .16); --mark-warn: rgba(214, 150, 0, .2); --mark-word: rgba(155, 63, 125, .14);
@@ -15,7 +15,7 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #0c0b22; --panel: #171639; --panel-2: #1d1b47; --line: #2b295a;
-    --ink: #ecebff; --ink-2: #b9b6e6; --ink-3: #8783bb; --head: #d5cfff;
+    --ink: #ecebff; --ink-2: #b9b6e6; --ink-3: #a29fd4; --head: #d5cfff;
     --accent: #d77ab6; --accent-ink: #1a0b18; --accent-soft: #3a1d3b; --teal: #4fd1c5;
     --danger: #ff6b82; --danger-soft: #3d1626; --warn: #f5c04a; --warn-soft: #3a2e12; --ok: #4ade9a; --ok-soft: #10342a;
     --lift: 0 2px 4px rgba(0, 0, 0, .4), 0 22px 60px rgba(0, 0, 0, .55);
@@ -26,7 +26,7 @@
 }
 :root[data-theme="dark"] {
   --bg: #0c0b22; --panel: #171639; --panel-2: #1d1b47; --line: #2b295a;
-  --ink: #ecebff; --ink-2: #b9b6e6; --ink-3: #8783bb; --head: #d5cfff;
+  --ink: #ecebff; --ink-2: #b9b6e6; --ink-3: #a29fd4; --head: #d5cfff;
   --accent: #d77ab6; --accent-ink: #1a0b18; --accent-soft: #3a1d3b; --teal: #4fd1c5;
   --danger: #ff6b82; --danger-soft: #3d1626; --warn: #f5c04a; --warn-soft: #3a2e12; --ok: #4ade9a; --ok-soft: #10342a;
   --lift: 0 2px 4px rgba(0, 0, 0, .4), 0 22px 60px rgba(0, 0, 0, .55);
@@ -103,8 +103,15 @@ button.chip { cursor: pointer; }
 button.chip:hover { border-color: var(--accent); }
 .chip input { border: 0; outline: 0; background: transparent; min-width: 220px; font-size: 14px; }
 
-.verdict { margin-top: 36px; display: grid; justify-items: center; text-align: center; gap: 6px; }
-.verdict .gauge { width: 240px; max-width: 70vw; }
+/* v2.3: the verdict leads; the score sits beside it, smaller, labelled as a score */
+.verdict { margin-top: 36px; display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 28px; align-items: center; padding: 28px 30px; border-radius: 28px; background: var(--panel); border: 1px solid var(--line); box-shadow: var(--lift-sm); }
+.v-main { min-width: 0; }
+.v-badge { display: inline-flex; align-items: center; gap: 10px; padding: 8px 16px 8px 12px; border-radius: 999px; background: var(--vsoft); color: var(--vcolor); font: 600 20px/1 var(--f-display); letter-spacing: .01em; }
+.v-badge .ico { width: 24px; height: 24px; stroke-width: 2.4; }
+.v-score { display: grid; justify-items: center; text-align: center; }
+.verdict .gauge { width: 170px; max-width: 100%; }
+.v-score .lbl { margin-top: 4px; font-size: 14px; color: var(--ink-2); line-height: 1.3; }
+.v-score .lbl small { display: block; font-size: 12px; color: var(--ink-3); }
 .verdict .needle { transform-origin: 100px 100px; }
 .verdict.landed .num { animation: land .45s ease; }
 @keyframes land { 0% { transform: scale(1); } 45% { transform: scale(1.12); } 100% { transform: scale(1); } }
@@ -112,9 +119,10 @@ button.chip:hover { border-color: var(--accent); }
 .rv.in { opacity: 1; transform: none; transition: opacity .5s ease, transform .5s ease; }
 #read.play > * { animation: rise .45s ease both; }
 #read.play > *:nth-child(2) { animation-delay: .08s; } #read.play > *:nth-child(3) { animation-delay: .16s; } #read.play > *:nth-child(4) { animation-delay: .24s; } #read.play > *:nth-child(5) { animation-delay: .32s; }
-.verdict .num { font: 600 56px/1 var(--f-display); color: var(--vcolor); font-variant-numeric: tabular-nums; margin-top: -6px; }
-.verdict h2 { margin: 10px 0 0; font: 600 clamp(26px, 4vw, 36px)/1.12 var(--f-display); color: var(--head); text-wrap: balance; }
-.verdict p { margin: 8px 0 0; color: var(--ink-2); max-width: 46ch; text-wrap: balance; }
+.verdict .num { font: 600 38px/1 var(--f-display); color: var(--vcolor); font-variant-numeric: tabular-nums; margin-top: -4px; }
+.verdict .num small { font-size: 16px; color: var(--ink-3); font-weight: 500; }
+.verdict h2 { margin: 16px 0 0; font: 600 clamp(28px, 4.4vw, 40px)/1.1 var(--f-display); color: var(--head); text-wrap: balance; }
+.verdict p { margin: 10px 0 0; color: var(--ink-2); max-width: 46ch; }
 .lvl-high { --vcolor: var(--danger); --vsoft: var(--danger-soft); }
 .lvl-medium { --vcolor: var(--warn); --vsoft: var(--warn-soft); }
 .lvl-low { --vcolor: var(--ok); --vsoft: var(--ok-soft); }
@@ -142,6 +150,43 @@ button.chip:hover { border-color: var(--accent); }
 .busy .barx i { display: block; height: 100%; width: 8%; background: var(--accent); border-radius: 999px; transition: width .3s; }
 .note { margin: 18px auto 0; max-width: 52ch; text-align: center; color: var(--ink-3); font-size: 15px; }
 
+/* ---------------------------------------------------------------- privacy, examples, practice (v2.3) */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.privacy { display: flex; gap: 8px; align-items: center; justify-content: center; margin: 18px 0 0; font-size: 15px; color: var(--ink-2); text-align: center; }
+.privacy .ico { width: 17px; height: 17px; color: var(--teal); }
+body.checked .privacy { display: none; }
+.extras { margin-top: 26px; display: grid; justify-items: center; gap: 16px; animation: rise .9s .8s ease both; }
+body.checked .extras { display: none; }
+.examples { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; }
+.examples span { font-size: 14px; color: var(--ink-3); margin-right: 2px; }
+.ex { border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 8px 14px; font-size: 15px; color: var(--ink-2); cursor: pointer; transition: border-color .2s, color .2s; }
+.ex:hover { border-color: var(--accent); color: var(--accent); }
+.practice-btn { display: inline-flex; gap: 8px; align-items: center; border: 0; background: none; color: var(--accent); font: 600 16px/1 var(--f-display); cursor: pointer; padding: 10px 14px; border-radius: 12px; }
+.practice-btn:hover { background: var(--accent-soft); }
+.practice-btn .ico { width: 18px; height: 18px; }
+.practice { position: fixed; inset: 0; z-index: 40; background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: blur(6px); display: grid; place-items: center; padding: 20px; overflow: auto; }
+.practice-card { width: min(680px, 100%); background: var(--panel); border: 1px solid var(--line); border-radius: 28px; box-shadow: var(--lift); padding: 26px 28px 28px; }
+.practice-top { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+.practice-top h2 { margin: 0; font: 600 26px/1.1 var(--f-display); color: var(--head); }
+.pscore { margin-left: auto; font-size: 15px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.practice-x { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel-2); cursor: pointer; display: grid; place-items: center; }
+.pmsg { padding: 18px 20px; border-radius: 18px; background: var(--panel-2); border: 1px solid var(--line); }
+.pmsg .from { font-size: 14px; color: var(--ink-3); margin-bottom: 8px; overflow-wrap: anywhere; }
+.pmsg .body { white-space: pre-wrap; overflow-wrap: anywhere; }
+.pcount { font: 600 12px/1 var(--f-body); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 10px; }
+.guess { display: flex; gap: 12px; margin-top: 18px; }
+.guess button { flex: 1; padding: 14px; border-radius: 16px; border: 1px solid var(--line); background: var(--panel); font: 600 18px/1 var(--f-display); cursor: pointer; display: inline-flex; gap: 8px; align-items: center; justify-content: center; }
+.guess .g-scam:hover { border-color: var(--danger); color: var(--danger); }
+.guess .g-legit:hover { border-color: var(--ok); color: var(--ok); }
+.reveal { margin-top: 18px; padding: 16px 18px; border-radius: 18px; border: 1px solid var(--line); }
+.reveal.right { background: var(--ok-soft); } .reveal.wrong { background: var(--danger-soft); }
+.reveal h3 { margin: 0 0 6px; font: 600 19px/1.2 var(--f-display); display: flex; gap: 8px; align-items: center; }
+.reveal p { margin: 0 0 8px; color: var(--ink-2); }
+.reveal ul { margin: 4px 0 0; padding-left: 20px; color: var(--ink-2); }
+.reveal .row { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+.btn { border: 0; border-radius: 14px; padding: 12px 18px; font: 600 16px/1 var(--f-display); cursor: pointer; background: var(--accent); color: var(--accent-ink); }
+.btn.ghost { background: var(--panel); color: var(--accent); border: 1px solid var(--accent); }
+
 /* ---------------------------------------------------------------- theme toggle */
 .theme { position: fixed; right: 20px; bottom: calc(env(safe-area-inset-bottom, 0px) + 20px); width: 52px; height: 52px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel); box-shadow: var(--lift-sm); cursor: pointer; display: grid; place-items: center; color: var(--head); z-index: 20; transition: transform .2s; }
 .theme:hover { transform: rotate(18deg) scale(1.06); }
@@ -157,6 +202,9 @@ body.no-motion *, body.no-motion *::before, body.no-motion *::after { animation:
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .theme .sun { display: none; } :root:not([data-theme="light"]) .theme .moon { display: block; } }
 
 @media (max-width: 640px) {
+  .verdict { grid-template-columns: minmax(0, 1fr); padding: 22px; }
+  .v-score { justify-items: start; text-align: left; grid-template-columns: auto 1fr; column-gap: 14px; align-items: center; }
+  .verdict .gauge { width: 120px; grid-row: span 2; }
   .r-top { grid-template-columns: minmax(0, 1fr); }
   .r-top .slot-dock { order: -1; }
   .hint { display: none; }

@@ -117,7 +117,7 @@
       html: '<div class="j-link"><div class="j-url" data-at="0.05">' + linkParts(u) + '</div><div class="j-owner" data-at="0.3">' + ico("user") + "Real owner: <b>" + esc(u.domain || "unknown") + "</b></div>" +
         '<div class="j-checks">' + (rs.length ? rs.map((x, i) => '<div class="j-check ' + (good.test(x) ? "ok" : "bad") + '" data-at="' + (0.42 + i * 0.1).toFixed(2) + '">' + ico(good.test(x) ? "check" : "alert") + esc(x) + "</div>").join("")
           : '<div class="j-check ok" data-at="0.45">' + ico("check") + "Nothing unusual in its structure</div>") + "</div>" +
-        '<div class="j-meter" data-at="0.8"><div class="j-meter-t"><i style="--w:' + pct(u.risk_score) + '%" class="' + (u.risk_score >= 0.8 ? "hi" : u.risky ? "mid" : "lo") + '"></i></div><b>' + pct(u.risk_score) + "% risky</b></div></div>",
+        '<div class="j-meter" data-at="0.8"><div class="j-meter-t"><i style="--w:' + pct(u.risk_score) + '%" class="' + (u.risk_score >= 0.8 ? "hi" : u.risky ? "mid" : "lo") + '"></i></div><b>link score ' + pct(u.risk_score) + "/100</b></div></div>",
     };
   }
 
@@ -144,14 +144,14 @@
       key: "weigh", name: "Weigh it", title: "Weigh the evidence", hold: 6200,
       line: "Every piece of evidence pushes the score toward scam or toward safe.",
       html: '<div class="j-weigh"><div class="j-scale" data-at="0.03"><div class="j-scale-t"></div><div class="j-knob" id="j-knob"></div><span class="l">safe</span><span class="r">scam</span></div>' +
-        '<div class="j-score" id="j-wnum" data-at="0.03">0%</div><div class="j-pushes">' + rows + "</div></div>",
+        '<div class="j-score" id="j-wnum" data-at="0.03">0</div><div class="j-pushes">' + rows + "</div></div>",
       update(el, p) {
         let z = base;
         items.forEach((x, i) => { z += x.c * out3(clamp((p - at(i)) / 0.09, 0, 1)); });
         z += rest * out3(clamp((p - at(items.length)) / 0.1, 0, 1));
         const v = sig(z);
         el.querySelector("#j-knob").style.left = (v * 100).toFixed(2) + "%";
-        const n = el.querySelector("#j-wnum"); n.textContent = pct(v) + "%";
+        const n = el.querySelector("#j-wnum"); n.textContent = pct(v);
         n.dataset.z = v >= d.M.high_threshold ? "hi" : v >= d.M.threshold ? "mid" : "lo";
       },
     };
@@ -173,20 +173,21 @@
         const moved = sc.effect === "raise" || sc.effect === "lower";
         const hit = sc.checks.filter(c => c.hit && c.id !== "official")[0], off = sc.checks.filter(c => c.id === "official" && c.hit)[0];
         snd = '<div class="j-snd" data-at="0.08"><small>' + ico("user") + 'Sender</small><div class="j-addr ' + (hit ? "bad" : off ? "ok" : "") + '">' + esc(sc.domain) + "</div><p>" + esc(hit ? hit.detail : off ? off.detail : "Nothing unusual about the address.") + "</p>" +
-          '<div class="j-move" data-at="0.3"><b>' + pct(content) + "%</b>" + ico("arrow") + "<b>" + pct(fin) + "%</b><span>" + (moved ? (pct(content) === pct(fin) ? "already at the top, so no room to move" : "the sender can only nudge the score") : "no change") + "</span></div></div>";
+          '<div class="j-move" data-at="0.3"><b>' + pct(content) + "</b>" + ico("arrow") + "<b>" + pct(fin) + "</b><span>" + (moved ? (pct(content) === pct(fin) ? "already at the top, so no room to move" : "the sender can only nudge the score") : "no change") + "</span></div></div>";
       } else snd = '<div class="j-snd" data-at="0.08"><small>' + ico("user") + 'Sender</small><p>No sender given, so the message decides on its own.</p></div>';
     }
     const t0 = 0.42, t1 = 0.8;
     return {
       key: "verdict", name: isUrl ? "Verdict" : "Sender and verdict", title: isUrl ? "The verdict" : "Check the sender, then decide", hold: 6000,
       line: isUrl ? "Dangerous structure can only raise the score." : "The message leads. The sender can only nudge it.",
-      html: '<div class="j-verdict">' + snd + '<div class="j-final" data-at="0.36">' + dial(0, d.M) + '<div class="j-score" id="j-vnum">0%</div><h4 data-at="0.84">' + head + "</h4></div></div>",
+      html: '<div class="j-verdict">' + snd + '<div class="j-final" data-at="0.36">' + dial(0, d.M) + '<div class="j-score" id="j-vnum">0</div><div class="j-slbl">risk score out of 100</div>' +
+        '<div class="j-vbadge lvl-' + r.risk_level + '" data-at="0.84">' + esc(r.verdict) + '</div><h4 data-at="0.84">' + head + "</h4></div></div>",
       update(el, p) {
         const k = out3(clamp((p - t0) / (t1 - t0), 0, 1));
         const start = isUrl ? 0 : content;
         const v = p < t0 ? (isUrl ? 0 : content * out3(clamp((p - 0.36) / 0.06, 0, 1))) : start + (fin - start) * k;
         el.querySelector("#j-needle").style.transform = "rotate(" + (-90 + v * 180) + "deg)";
-        const n = el.querySelector("#j-vnum"); n.textContent = pct(v) + "%";
+        const n = el.querySelector("#j-vnum"); n.textContent = pct(v);
         n.dataset.z = v >= d.M.high_threshold ? "hi" : v >= d.M.threshold ? "mid" : "lo";
       },
     };

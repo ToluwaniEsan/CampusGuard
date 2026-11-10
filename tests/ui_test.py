@@ -1,7 +1,8 @@
+from pathlib import Path
 import asyncio, sys
 from playwright.async_api import async_playwright
 OUT = sys.argv[1] if len(sys.argv) > 1 else "/tmp/claude-0/shots"
-URL = sys.argv[2] if len(sys.argv) > 2 else "file:///home/claude/campusguard/dist/campusguard.html"
+URL = sys.argv[2] if len(sys.argv) > 2 else (Path(__file__).resolve().parents[1] / "dist" / "campusguard.html").as_uri()
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()

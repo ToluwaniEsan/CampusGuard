@@ -1,0 +1,30 @@
+{
+  "held_out_test": {
+    "n": 2008,
+    "recall": 0.9756,
+    "false_alarm_rate": 0.0095,
+    "f1": 0.9796
+  },
+  "unseen_legit_false_alarms": {
+    "spamassassin_ham": {
+      "n": 1000,
+      "false_alarm_rate": 0.016
+    },
+    "enron_ham": {
+      "n": 1000,
+      "false_alarm_rate": 0.005
+    },
+    "ceas_ham": {
+      "n": 1000,
+      "false_alarm_rate": 0.029
+    },
+    "ling_ham": {
+      "n": 1000,
+      "false_alarm_rate": 0.002
+    },
+    "sms_ham": {
+      "n": 1000,
+      "false_alarm_rate": 0.011
+    }
+  }
+}

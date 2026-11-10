@@ -137,3 +137,7 @@
   .j-keys { display: none; } .j-btn span { display: none; } .j-btn.main span { display: inline; } .j-btn.main { min-width: 104px; }
   .j-dial { width: 170px; } .j-snd p { display: none; }
 }
+
+/* v2.3: the walkthrough ends on the verdict, with the score as a labelled number */
+.j-slbl { font-size: 13px; color: var(--ink-3); margin-top: 2px; }
+.j-vbadge { display: inline-block; margin-top: 14px; padding: 8px 18px; border-radius: 999px; font: 600 22px/1 var(--f-display); background: var(--vsoft, var(--panel-2)); color: var(--vcolor, var(--ink)); }

@@ -9,75 +9,75 @@
       "kind": "M365 credential",
       "label": 1,
       "verdict": "High Risk",
-      "risk": 0.9997,
-      "msg": 0.9996,
+      "risk": 1.0,
+      "msg": 1.0,
       "top_flags": [
         "Wording common in scams",
+        "Lookalike web address",
         "Threat of losing access",
-        "Claims to be an official office or service",
-        "Urgent or pressure language"
+        "Claims to be an official office or service"
       ],
-      "explanation": "This looks like a scam (100% risk). Warning signs: threat of losing access (\"will be permanently deleted\"); claims to be an official office or service (\"outlook\"); urgent or pressure language (\"within 12 hours\"); its link goes to outlook-mailservice.com, which isn't a trusted address; also, sender address imitates a trusted domain."
+      "explanation": "This looks like a scam (risk score 100/100). Warning signs: lookalike web address (\"https://outlook-mailservice.com/owa/release?u=student\"); threat of losing access (\"will be permanently deleted\"); claims to be an official office or service (\"outlook\"); its link goes to outlook-mailservice.com, which isn't a trusted address; also, sender address imitates a trusted domain."
     },
     {
       "id": "S02",
       "kind": "DocuSign lure",
       "label": 1,
       "verdict": "High Risk",
-      "risk": 0.954,
-      "msg": 0.9424,
+      "risk": 0.9586,
+      "msg": 0.9483,
       "top_flags": [
         "Wording common in scams",
         "Claims to be an official office or service",
         "Excessive capitals or exclamation marks",
         "Too-good-to-be-true money or prize"
       ],
-      "explanation": "This looks like a scam (95% risk). Warning signs: claims to be an official office or service (\"Payroll\"); excessive capitals or exclamation marks (\"REVIEW DOCUMENT\"); too-good-to-be-true money or prize (\"Stipend\"); also, sender name doesn't match their address."
+      "explanation": "This looks like a scam (risk score 96/100). Warning signs: claims to be an official office or service (\"Payroll\"); excessive capitals or exclamation marks (\"REVIEW DOCUMENT\"); too-good-to-be-true money or prize (\"Stipend\"); also, sender name doesn't match their address."
     },
     {
       "id": "S03",
       "kind": "Package fee SMS",
       "label": 1,
       "verdict": "High Risk",
-      "risk": 0.9989,
-      "msg": 0.9989,
+      "risk": 0.9999,
+      "msg": 0.9999,
       "top_flags": [
         "Wording common in scams",
+        "Lookalike web address",
         "Threat of losing access",
-        "Claims to be an official office or service",
-        "Urgent or pressure language"
+        "Claims to be an official office or service"
       ],
-      "explanation": "This looks like a scam (100% risk). Warning signs: threat of losing access (\"on hold\"); claims to be an official office or service (\"USPS\"); urgent or pressure language (\"within 24 hours\"); its link goes to usps-redelivery-help.top, which isn't a trusted address."
+      "explanation": "This looks like a scam (risk score 100/100). Warning signs: lookalike web address (\"https://usps-redelivery-help.top/track\"); threat of losing access (\"on hold\"); claims to be an official office or service (\"USPS\"); its link goes to usps-redelivery-help.top, which isn't a trusted address."
     },
     {
       "id": "S04",
       "kind": "Fake job (check scam)",
       "label": 1,
       "verdict": "High Risk",
-      "risk": 0.9173,
-      "msg": 0.9173,
+      "risk": 0.8919,
+      "msg": 0.8919,
       "top_flags": [
         "Wording common in scams",
-        "Easy remote job offer",
         "Asks you to keep it secret or reply privately",
+        "Easy remote job offer",
         "Too-good-to-be-true money or prize"
       ],
-      "explanation": "This looks like a scam (92% risk). Warning signs: easy remote job offer (\"Job Opportunity\"); asks you to keep it secret or reply privately (\"alternative email\"); too-good-to-be-true money or prize (\"$350\")."
+      "explanation": "This looks like a scam (risk score 89/100). Warning signs: asks you to keep it secret or reply privately (\"alternative email\"); easy remote job offer (\"Job Opportunity\"); too-good-to-be-true money or prize (\"$350\")."
     },
     {
       "id": "S05",
       "kind": "Gift card CEO",
       "label": 1,
-      "verdict": "Suspicious",
-      "risk": 0.7274,
-      "msg": 0.6592,
+      "verdict": "High Risk",
+      "risk": 0.9589,
+      "msg": 0.9487,
       "top_flags": [
+        "Sender says they can't talk and wants a quick favor",
         "Wording common in scams",
-        "Asks you to keep it secret or reply privately",
         "Urgent or pressure language",
         "Official-sounding sender using a personal mailbox"
       ],
-      "explanation": "This message is suspicious (73% risk). Warning signs: asks you to keep it secret or reply privately (\"Are you available\"); urgent or pressure language (\"as soon as possible\"); wording common in scams (\"hello\"); also, official-sounding sender using a personal mailbox."
+      "explanation": "This looks like a scam (risk score 96/100). Warning signs: sender says they can't talk and wants a quick favor (\"Are you available\"); urgent or pressure language (\"as soon as possible\"); wording common in scams (\"Hello\"); also, official-sounding sender using a personal mailbox."
     },
     {
       "id": "S06",
@@ -90,9 +90,9 @@
         "Wording common in scams",
         "Official-sounding message linking off campus",
         "Generic greeting",
-        "Asks you to send passwords, codes or personal info"
+        "Lookalike web address"
       ],
-      "explanation": "This looks like a scam (100% risk). Warning signs: official-sounding message linking off campus (\"http://aamu-studentaccounts.com/refund/claim\"); generic greeting (\"Dear Student\"); asks you to send passwords, codes or personal info (\"confirm your direct deposit and online banking login\"); its link goes to aamu-studentaccounts.com, which isn't a trusted address; also, sender address imitates a trusted domain."
+      "explanation": "This looks like a scam (risk score 100/100). Warning signs: official-sounding message linking off campus (\"http://aamu-studentaccounts.com/refund/claim\"); generic greeting (\"Dear Student\"); lookalike web address (\"http://aamu-studentaccounts.com/refund/claim\"); its link goes to aamu-studentaccounts.com, which isn't a trusted address; also, sender address imitates a trusted domain."
     },
     {
       "id": "S07",
@@ -102,130 +102,127 @@
       "risk": 1.0,
       "msg": 1.0,
       "top_flags": [
-        "Wording common in scams",
         "Threat of losing access",
-        "Claims to be an official office or service",
-        "Asks for your password or login"
+        "Wording common in scams",
+        "Lookalike web address",
+        "Claims to be an official office or service"
       ],
-      "explanation": "This looks like a scam (100% risk). Warning signs: threat of losing access (\"unusual sign-in\"); claims to be an official office or service (\"Apple\"); asks for your password or login (\"Verify your identity\"); its link goes to appleid-verification-center.com, which isn't a trusted address; also, sender address imitates a trusted domain."
+      "explanation": "This looks like a scam (risk score 100/100). Warning signs: threat of losing access (\"unusual sign-in\"); lookalike web address (\"https://appleid-verification-center.com/restore\"); claims to be an official office or service (\"Apple\"); its link goes to appleid-verification-center.com, which isn't a trusted address; also, sender address imitates a trusted domain."
     },
     {
       "id": "S08",
       "kind": "Netflix billing",
       "label": 1,
       "verdict": "High Risk",
-      "risk": 0.9948,
-      "msg": 0.9935,
+      "risk": 0.9995,
+      "msg": 0.9994,
       "top_flags": [
         "Wording common in scams",
+        "Lookalike web address",
         "Threat of losing access",
-        "Claims to be an official office or service",
-        "Unusual web address ending"
+        "Claims to be an official office or service"
       ],
-      "explanation": "This looks like a scam (99% risk). Warning signs: threat of losing access (\"on hold\"); claims to be an official office or service (\"netflix\"); unusual web address ending (\"http://netflix-billing-update.xyz/account\"); its link goes to netflix-billing-update.xyz, which isn't a trusted address; also, sender name doesn't match their address."
+      "explanation": "This looks like a scam (risk score 100/100). Warning signs: lookalike web address (\"http://netflix-billing-update.xyz/account\"); threat of losing access (\"on hold\"); claims to be an official office or service (\"netflix\"); its link goes to netflix-billing-update.xyz, which isn't a trusted address; also, sender name doesn't match their address."
     },
     {
       "id": "S09",
       "kind": "Zelle reversal",
       "label": 1,
       "verdict": "High Risk",
-      "risk": 0.936,
-      "msg": 0.936,
+      "risk": 0.9567,
+      "msg": 0.9567,
       "top_flags": [
         "Wording common in scams",
         "Asks you to pay first or move money",
-        "Requests personal or banking details",
         "Too-good-to-be-true money or prize"
       ],
-      "explanation": "This looks like a scam (94% risk). Warning signs: asks you to pay first or move money (\"send it back\"); requests personal or banking details (\"Zelle\"); too-good-to-be-true money or prize (\"$400\")."
+      "explanation": "This looks like a scam (risk score 96/100). Warning signs: asks you to pay first or move money (\"send it back\"); too-good-to-be-true money or prize (\"$400\"); wording common in scams (\"bank\")."
     },
     {
       "id": "S10",
       "kind": "Voicemail",
       "label": 1,
       "verdict": "High Risk",
-      "risk": 0.8625,
-      "msg": 0.8625,
+      "risk": 0.8135,
+      "msg": 0.8135,
       "top_flags": [
         "Wording common in scams",
         "Asks for your password or login"
       ],
-      "explanation": "This looks like a scam (86% risk). Warning signs: asks for your password or login (\"credentials\"); wording common in scams (\"attachment\")."
+      "explanation": "This looks like a scam (risk score 81/100). Warning signs: asks for your password or login (\"credentials\"); wording common in scams (\"voicemail\")."
     },
     {
       "id": "S11",
       "kind": "Crypto giveaway",
       "label": 1,
       "verdict": "High Risk",
-      "risk": 0.9944,
-      "msg": 0.9919,
+      "risk": 0.9976,
+      "msg": 0.9966,
       "top_flags": [
         "Wording common in scams",
+        "Lookalike web address",
         "Urgent or pressure language",
-        "Unusual web address ending",
-        "Requests personal or banking details"
+        "Too-good-to-be-true money or prize"
       ],
-      "explanation": "This looks like a scam (99% risk). Warning signs: urgent or pressure language (\"within 24 hours\"); unusual web address ending (\"https://coinbase-bonus.click/claim.\"); requests personal or banking details (\"crypto\"); its link goes to coinbase-bonus.click, which isn't a trusted address; also, sender address imitates a trusted domain."
+      "explanation": "This looks like a scam (risk score 100/100). Warning signs: lookalike web address (\"https://coinbase-bonus.click/claim.\"); urgent or pressure language (\"within 24 hours\"); too-good-to-be-true money or prize (\"claim your\"); its link goes to coinbase-bonus.click, which isn't a trusted address; also, sender address imitates a trusted domain."
     },
     {
       "id": "S12",
       "kind": "Scholarship fee",
       "label": 1,
       "verdict": "High Risk",
-      "risk": 0.9613,
-      "msg": 0.9582,
+      "risk": 0.9314,
+      "msg": 0.9138,
       "top_flags": [
         "Wording common in scams",
         "Asks you to pay first or move money",
-        "Too-good-to-be-true money or prize",
-        "Requests personal or banking details"
+        "Too-good-to-be-true money or prize"
       ],
-      "explanation": "This looks like a scam (96% risk). Warning signs: asks you to pay first or move money (\"processing fee\"); too-good-to-be-true money or prize (\"Scholarship\"); requests personal or banking details (\"credit card\"); its link goes to natl-scholarship-grants.org, which isn't a trusted address."
+      "explanation": "This looks like a scam (risk score 93/100). Warning signs: asks you to pay first or move money (\"processing fee\"); too-good-to-be-true money or prize (\"Scholarship\"); wording common in scams (\"thousands of\"); its link goes to natl-scholarship-grants.org, which isn't a trusted address."
     },
     {
       "id": "S13",
       "kind": "IT password reset",
       "label": 1,
       "verdict": "High Risk",
-      "risk": 0.9967,
-      "msg": 0.9948,
+      "risk": 0.9992,
+      "msg": 0.9988,
       "top_flags": [
         "Official-sounding message linking off campus",
+        "Lookalike web address",
         "Wording common in scams",
-        "Asks for your password or login",
-        "Asks you to send passwords, codes or personal info"
+        "Asks for your password or login"
       ],
-      "explanation": "This looks like a scam (100% risk). Warning signs: official-sounding message linking off campus (\"https://aamu-edu.support/reset\"); asks for your password or login (\"Password\"); asks you to send passwords, codes or personal info (\"enter your current password\"); its link goes to aamu-edu.support, which isn't a trusted address; also, sender address imitates a trusted domain."
+      "explanation": "This looks like a scam (risk score 100/100). Warning signs: official-sounding message linking off campus (\"https://aamu-edu.support/reset\"); lookalike web address (\"https://aamu-edu.support/reset\"); asks for your password or login (\"Password\"); its link goes to aamu-edu.support, which isn't a trusted address; also, sender address imitates a trusted domain."
     },
     {
       "id": "S14",
       "kind": "Rental scam",
       "label": 1,
       "verdict": "High Risk",
-      "risk": 0.96,
-      "msg": 0.96,
+      "risk": 0.9676,
+      "msg": 0.9676,
       "top_flags": [
         "Wording common in scams",
         "Asks you to pay first or move money",
-        "Requests personal or banking details",
         "Too-good-to-be-true money or prize"
       ],
-      "explanation": "This looks like a scam (96% risk). Warning signs: asks you to pay first or move money (\"send the first month and deposit\"); requests personal or banking details (\"Zelle\"); too-good-to-be-true money or prize (\"$600\")."
+      "explanation": "This looks like a scam (risk score 97/100). Warning signs: asks you to pay first or move money (\"send the first month and deposit\"); too-good-to-be-true money or prize (\"$600\"); wording common in scams (\"the keys\")."
     },
     {
       "id": "S15",
       "kind": "IRS refund",
       "label": 1,
       "verdict": "High Risk",
-      "risk": 0.9982,
-      "msg": 0.9982,
+      "risk": 0.999,
+      "msg": 0.999,
       "top_flags": [
         "Wording common in scams",
         "Threat of losing access",
-        "Requests personal or banking details",
-        "Asks you to send passwords, codes or personal info"
+        "Asks you to send passwords, codes or personal info",
+        "Urgent or pressure language"
       ],
-      "explanation": "This looks like a scam (100% risk). Warning signs: threat of losing access (\"refund will be cancelled\"); requests personal or banking details (\"Social Security\"); asks you to send passwords, codes or personal info (\"provide your Social Security Number and bank\")."
+      "explanation": "This looks like a scam (risk score 100/100). Warning signs: threat of losing access (\"refund will be cancelled\"); asks you to send passwords, codes or personal info (\"provide your Social Security Number and bank\"); urgent or pressure language (\"within 3 days\")."
     },
     {
       "id": "S16",
@@ -233,104 +230,104 @@
       "label": 1,
       "verdict": "Suspicious",
       "risk": 0.72,
-      "msg": 0.0624,
+      "msg": 0.1949,
       "top_flags": [
-        "Wording common in scams",
+        "Lookalike web address",
         "Asks for your password or login",
         "Link contains login/verify words",
-        "Lookalike web address"
+        "Wording common in scams"
       ],
-      "explanation": "This message is suspicious (72% risk). Warning signs: asks for your password or login (\"Log in\"); link contains login/verify words (\"https://canvas-lms-grades.com/login?course=CS405\"); lookalike web address (\"https://canvas-lms-grades.com/login?course=CS405\"); its link goes to canvas-lms-grades.com, which isn't a trusted address; also, sender address imitates a trusted domain."
+      "explanation": "This message is suspicious (risk score 72/100). Warning signs: lookalike web address (\"https://canvas-lms-grades.com/login?course=CS405\"); asks for your password or login (\"Log in\"); link contains login/verify words (\"https://canvas-lms-grades.com/login?course=CS405\"); its link goes to canvas-lms-grades.com, which isn't a trusted address; also, sender address imitates a trusted domain."
     },
     {
       "id": "S17",
       "kind": "Shared file",
       "label": 1,
       "verdict": "High Risk",
-      "risk": 0.9921,
-      "msg": 0.9887,
+      "risk": 0.9984,
+      "msg": 0.9978,
       "top_flags": [
         "Wording common in scams",
-        "Unusual web address ending",
+        "Lookalike web address",
         "Asks for your password or login",
         "Claims to be an official office or service"
       ],
-      "explanation": "This looks like a scam (99% risk). Warning signs: unusual web address ending (\"https://dropbox-share.info/s/xk29d/Team_Project_Final\"); asks for your password or login (\"sign in\"); claims to be an official office or service (\"Microsoft\"); its link goes to dropbox-share.info, which isn't a trusted address; also, sender address imitates a trusted domain."
+      "explanation": "This looks like a scam (risk score 100/100). Warning signs: lookalike web address (\"https://dropbox-share.info/s/xk29d/Team_Project_Final\"); asks for your password or login (\"sign in\"); claims to be an official office or service (\"Microsoft\"); its link goes to dropbox-share.info, which isn't a trusted address; also, sender address imitates a trusted domain."
     },
     {
       "id": "S18",
       "kind": "Textbook resale",
       "label": 1,
       "verdict": "High Risk",
-      "risk": 0.9489,
-      "msg": 0.9489,
+      "risk": 0.925,
+      "msg": 0.925,
       "top_flags": [
         "Wording common in scams",
         "Asks you to send passwords, codes or personal info",
         "Asks for your password or login",
-        "Requests personal or banking details"
+        "Too-good-to-be-true money or prize"
       ],
-      "explanation": "This looks like a scam (95% risk). Warning signs: asks you to send passwords, codes or personal info (\"tell me the 6 digit verification code\"); asks for your password or login (\"verification code\"); requests personal or banking details (\"cashapp\")."
+      "explanation": "This looks like a scam (risk score 93/100). Warning signs: asks you to send passwords, codes or personal info (\"tell me the 6 digit verification code\"); asks for your password or login (\"verification code\"); too-good-to-be-true money or prize (\"$150\")."
     },
     {
       "id": "S19",
       "kind": "Account deactivation",
       "label": 1,
       "verdict": "High Risk",
-      "risk": 0.9998,
-      "msg": 0.9998,
+      "risk": 1.0,
+      "msg": 1.0,
       "top_flags": [
-        "Wording common in scams",
         "Threat of losing access",
+        "Wording common in scams",
         "Link uses a raw IP address",
-        "Urgent or pressure language"
+        "Excessive capitals or exclamation marks"
       ],
-      "explanation": "This looks like a scam (100% risk). Warning signs: threat of losing access (\"account will be DEACTIVATED\"); link uses a raw ip address (\"http://45.89.127.22/cancel/index.php\"); urgent or pressure language (\"FINAL WARNING\"); its link goes to 45.89.127.22, which isn't a trusted address."
+      "explanation": "This looks like a scam (risk score 100/100). Warning signs: threat of losing access (\"account will be DEACTIVATED\"); link uses a raw ip address (\"http://45.89.127.22/cancel/index.php\"); excessive capitals or exclamation marks (\"FINAL WARNING\"); its link goes to 45.89.127.22, which isn't a trusted address."
     },
     {
       "id": "S20",
       "kind": "Inheritance",
       "label": 1,
       "verdict": "High Risk",
-      "risk": 0.9996,
-      "msg": 0.9996,
+      "risk": 0.9998,
+      "msg": 0.9998,
       "top_flags": [
         "Generic greeting",
         "Wording common in scams",
         "Asks you to keep it secret or reply privately",
         "Too-good-to-be-true money or prize"
       ],
-      "explanation": "This looks like a scam (100% risk). Warning signs: generic greeting (\"Dear Friend\"); asks you to keep it secret or reply privately (\"confidential\"); too-good-to-be-true money or prize (\"$8\")."
+      "explanation": "This looks like a scam (risk score 100/100). Warning signs: generic greeting (\"Dear Friend\"); asks you to keep it secret or reply privately (\"confidential\"); too-good-to-be-true money or prize (\"$8\")."
     },
     {
       "id": "S21",
       "kind": "Financial aid DM",
       "label": 1,
       "verdict": "High Risk",
-      "risk": 0.9145,
-      "msg": 0.9145,
+      "risk": 0.9564,
+      "msg": 0.9564,
       "top_flags": [
         "Wording common in scams",
-        "Asks for your password or login",
         "Asks you to send passwords, codes or personal info",
+        "Asks for your password or login",
         "Claims to be an official office or service"
       ],
-      "explanation": "This looks like a scam (91% risk). Warning signs: asks for your password or login (\"verify your identity\"); asks you to send passwords, codes or personal info (\"text a picture of your student ID and your bank\"); claims to be an official office or service (\"financial aid\")."
+      "explanation": "This looks like a scam (risk score 96/100). Warning signs: asks you to send passwords, codes or personal info (\"text a picture of your student ID and your bank\"); asks for your password or login (\"verify your identity\"); claims to be an official office or service (\"financial aid\")."
     },
     {
       "id": "S22",
       "kind": "Short link SMS",
       "label": 1,
       "verdict": "High Risk",
-      "risk": 0.9927,
-      "msg": 0.9927,
+      "risk": 0.9951,
+      "msg": 0.9951,
       "top_flags": [
         "Wording common in scams",
         "Official-sounding message linking off campus",
-        "Urgent or pressure language",
-        "Shortened link hides the destination"
+        "Shortened link hides the destination",
+        "Urgent or pressure language"
       ],
-      "explanation": "This looks like a scam (99% risk). Warning signs: official-sounding message linking off campus (\"bit.ly/aamu-reverify\"); urgent or pressure language (\"expires\"); shortened link hides the destination (\"bit.ly/aamu-reverify\"); its link goes to bit.ly, which isn't a trusted address."
+      "explanation": "This looks like a scam (risk score 100/100). Warning signs: official-sounding message linking off campus (\"bit.ly/aamu-reverify\"); shortened link hides the destination (\"bit.ly/aamu-reverify\"); urgent or pressure language (\"expires\"); its link goes to bit.ly, which isn't a trusted address."
     },
     {
       "id": "S23",
@@ -342,257 +339,232 @@
       "top_flags": [
         "Wording common in scams",
         "Official-sounding message linking off campus",
-        "Asks for your password or login",
-        "Claims to be an official office or service"
+        "Lookalike web address",
+        "Asks for your password or login"
       ],
-      "explanation": "This looks like a scam (100% risk). Warning signs: official-sounding message linking off campus (\"https://aamu-payroll.services/employee\"); asks for your password or login (\"Sign in\"); claims to be an official office or service (\"Payroll\"); its link goes to aamu-payroll.services, which isn't a trusted address; also, sender address imitates a trusted domain."
+      "explanation": "This looks like a scam (risk score 100/100). Warning signs: official-sounding message linking off campus (\"https://aamu-payroll.services/employee\"); lookalike web address (\"https://aamu-payroll.services/employee\"); asks for your password or login (\"Sign in\"); its link goes to aamu-payroll.services, which isn't a trusted address; also, sender address imitates a trusted domain."
     },
     {
       "id": "S24",
       "kind": "Fake internship",
       "label": 1,
-      "verdict": "High Risk",
-      "risk": 0.8062,
-      "msg": 0.8062,
+      "verdict": "Suspicious",
+      "risk": 0.6964,
+      "msg": 0.6964,
       "top_flags": [
         "Wording common in scams",
-        "Requests personal or banking details",
         "Easy remote job offer",
-        "Claims to be an official office or service"
+        "Claims to be an official office or service",
+        "Too-good-to-be-true money or prize"
       ],
-      "explanation": "This looks like a scam (81% risk). Warning signs: requests personal or banking details (\"driver's license\"); easy remote job offer (\"$28/hour\"); claims to be an official office or service (\"payroll\")."
+      "explanation": "This message is suspicious (risk score 70/100). Warning signs: easy remote job offer (\"$28/hour\"); claims to be an official office or service (\"payroll\"); too-good-to-be-true money or prize (\"$28\")."
     },
     {
       "id": "S25",
       "kind": "Wells Fargo",
       "label": 1,
       "verdict": "High Risk",
-      "risk": 0.9995,
-      "msg": 0.9992,
+      "risk": 0.9998,
+      "msg": 0.9997,
       "top_flags": [
         "Threat of losing access",
+        "Lookalike web address",
         "Wording common in scams",
-        "Requests personal or banking details",
         "Urgent or pressure language"
       ],
-      "explanation": "This looks like a scam (100% risk). Warning signs: threat of losing access (\"Unusual activity\"); requests personal or banking details (\"debit card\"); urgent or pressure language (\"immediately\"); its link goes to wellsfargo-secure-online.com, which isn't a trusted address; also, sender address imitates a trusted domain."
+      "explanation": "This looks like a scam (risk score 100/100). Warning signs: threat of losing access (\"Unusual activity\"); lookalike web address (\"https://wellsfargo-secure-online.com/verify\"); urgent or pressure language (\"immediately\"); its link goes to wellsfargo-secure-online.com, which isn't a trusted address; also, sender address imitates a trusted domain."
     },
     {
       "id": "L01",
       "kind": "Amazon order",
       "label": 0,
       "verdict": "Likely Safe",
-      "risk": 0.1351,
-      "msg": 0.1602,
+      "risk": 0.0885,
+      "msg": 0.036,
       "top_flags": [
-        "Wording common in scams",
         "Claims to be an official office or service"
       ],
-      "explanation": "This looks safe (14% risk). We didn't find strong warning signs."
+      "explanation": "This looks safe (risk score 9/100). One thing to keep in mind: claims to be an official office or service."
     },
     {
       "id": "L02",
       "kind": "Google security (real)",
       "label": 0,
       "verdict": "Likely Safe",
-      "risk": 0.5428,
-      "msg": 0.1792,
-      "top_flags": [
-        "Wording common in scams"
-      ],
-      "explanation": "This looks safe (54% risk). We didn't find strong warning signs."
+      "risk": 0.5191,
+      "msg": 0.1105,
+      "top_flags": [],
+      "explanation": "This looks safe (risk score 52/100). We didn't find strong warning signs."
     },
     {
       "id": "L03",
       "kind": "Professor",
       "label": 0,
       "verdict": "Likely Safe",
-      "risk": 0.0006,
-      "msg": 0.0008,
-      "top_flags": [
-        "Wording common in scams"
-      ],
-      "explanation": "This looks safe (0% risk). We didn't find strong warning signs."
+      "risk": 0.0009,
+      "msg": 0.0011,
+      "top_flags": [],
+      "explanation": "This looks safe (risk score 0/100). We didn't find strong warning signs."
     },
     {
       "id": "L04",
       "kind": "Handshake",
       "label": 0,
       "verdict": "Likely Safe",
-      "risk": 0.0069,
-      "msg": 0.0091,
+      "risk": 0.0041,
+      "msg": 0.0054,
       "top_flags": [
-        "Wording common in scams",
         "Claims to be an official office or service"
       ],
-      "explanation": "This looks safe (1% risk). We didn't find strong warning signs."
+      "explanation": "This looks safe (risk score 0/100). One thing to keep in mind: claims to be an official office or service."
     },
     {
       "id": "L05",
       "kind": "Bank alert (real)",
       "label": 0,
       "verdict": "Likely Safe",
-      "risk": 0.0347,
-      "msg": 0.0463,
+      "risk": 0.0047,
+      "msg": 0.0063,
       "top_flags": [
-        "Wording common in scams",
-        "Requests personal or banking details",
         "Claims to be an official office or service",
         "Too-good-to-be-true money or prize"
       ],
-      "explanation": "This looks safe (3% risk). We didn't find strong warning signs."
+      "explanation": "This looks safe (risk score 0/100). One thing to keep in mind: claims to be an official office or service."
     },
     {
       "id": "L06",
       "kind": "Team chat",
       "label": 0,
       "verdict": "Likely Safe",
-      "risk": 0.0021,
-      "msg": 0.0029,
-      "top_flags": [
-        "Wording common in scams"
-      ],
-      "explanation": "This looks safe (0% risk). We didn't find strong warning signs."
+      "risk": 0.0006,
+      "msg": 0.0008,
+      "top_flags": [],
+      "explanation": "This looks safe (risk score 0/100). We didn't find strong warning signs."
     },
     {
       "id": "L07",
       "kind": "Canvas (real)",
       "label": 0,
       "verdict": "Likely Safe",
-      "risk": 0.1283,
-      "msg": 0.1421,
-      "top_flags": [
-        "Wording common in scams"
-      ],
-      "explanation": "This looks safe (13% risk). We didn't find strong warning signs."
+      "risk": 0.1403,
+      "msg": 0.1741,
+      "top_flags": [],
+      "explanation": "This looks safe (risk score 14/100). We didn't find strong warning signs."
     },
     {
       "id": "L08",
       "kind": "Financial aid (real)",
       "label": 0,
       "verdict": "Likely Safe",
-      "risk": 0.0528,
-      "msg": 0.0407,
+      "risk": 0.0483,
+      "msg": 0.0289,
       "top_flags": [
-        "Wording common in scams",
         "Claims to be an official office or service",
         "Asks for your password or login"
       ],
-      "explanation": "This looks safe (5% risk). We didn't find strong warning signs."
+      "explanation": "This looks safe (risk score 5/100). One thing to keep in mind: claims to be an official office or service."
     },
     {
       "id": "L09",
       "kind": "Newsletter",
       "label": 0,
       "verdict": "Likely Safe",
-      "risk": 0.1143,
-      "msg": 0.1143,
+      "risk": 0.1902,
+      "msg": 0.1902,
       "top_flags": [
-        "Wording common in scams",
         "Asks for your password or login"
       ],
-      "explanation": "This looks safe (11% risk). We didn't find strong warning signs."
+      "explanation": "This looks safe (risk score 19/100). One thing to keep in mind: asks for your password or login."
     },
     {
       "id": "L10",
       "kind": "Duo enrollment",
       "label": 0,
       "verdict": "Likely Safe",
-      "risk": 0.0263,
-      "msg": 0.0009,
+      "risk": 0.0231,
+      "msg": 0.0011,
       "top_flags": [
-        "Wording common in scams",
         "Claims to be an official office or service"
       ],
-      "explanation": "This looks safe (3% risk). We didn't find strong warning signs."
+      "explanation": "This looks safe (risk score 2/100). One thing to keep in mind: claims to be an official office or service."
     },
     {
       "id": "L11",
       "kind": "Parent",
       "label": 0,
       "verdict": "Likely Safe",
-      "risk": 0.0064,
-      "msg": 0.0064,
-      "top_flags": [
-        "Wording common in scams"
-      ],
-      "explanation": "This looks safe (1% risk). We didn't find strong warning signs."
+      "risk": 0.0134,
+      "msg": 0.0134,
+      "top_flags": [],
+      "explanation": "This looks safe (risk score 1/100). We didn't find strong warning signs."
     },
     {
       "id": "L12",
       "kind": "LinkedIn",
       "label": 0,
       "verdict": "Likely Safe",
-      "risk": 0.0251,
-      "msg": 0.0334,
-      "top_flags": [
-        "Wording common in scams"
-      ],
-      "explanation": "This looks safe (3% risk). We didn't find strong warning signs."
+      "risk": 0.0439,
+      "msg": 0.0586,
+      "top_flags": [],
+      "explanation": "This looks safe (risk score 4/100). We didn't find strong warning signs."
     },
     {
       "id": "L13",
       "kind": "Club",
       "label": 0,
       "verdict": "Likely Safe",
-      "risk": 0.0007,
-      "msg": 0.0007,
-      "top_flags": [
-        "Wording common in scams"
-      ],
-      "explanation": "This looks safe (0% risk). We didn't find strong warning signs."
+      "risk": 0.0002,
+      "msg": 0.0002,
+      "top_flags": [],
+      "explanation": "This looks safe (risk score 0/100). We didn't find strong warning signs."
     },
     {
       "id": "L14",
       "kind": "Receipt",
       "label": 0,
       "verdict": "Likely Safe",
-      "risk": 0.0166,
-      "msg": 0.0221,
+      "risk": 0.0124,
+      "msg": 0.0166,
       "top_flags": [
-        "Wording common in scams",
         "Too-good-to-be-true money or prize"
       ],
-      "explanation": "This looks safe (2% risk). We didn't find strong warning signs."
+      "explanation": "This looks safe (risk score 1/100). One thing to keep in mind: too-good-to-be-true money or prize."
     },
     {
       "id": "L15",
       "kind": "Registrar",
       "label": 0,
       "verdict": "Likely Safe",
-      "risk": 0.0043,
-      "msg": 0.0058,
+      "risk": 0.0088,
+      "msg": 0.0118,
       "top_flags": [
-        "Wording common in scams",
         "Claims to be an official office or service"
       ],
-      "explanation": "This looks safe (0% risk). We didn't find strong warning signs."
+      "explanation": "This looks safe (risk score 1/100). One thing to keep in mind: claims to be an official office or service."
     },
     {
       "id": "L16",
       "kind": "Interview invite",
       "label": 0,
       "verdict": "Likely Safe",
-      "risk": 0.005,
-      "msg": 0.005,
+      "risk": 0.0064,
+      "msg": 0.0064,
       "top_flags": [
-        "Wording common in scams",
         "Easy remote job offer"
       ],
-      "explanation": "This looks safe (0% risk). One thing to keep in mind: easy remote job offer."
+      "explanation": "This looks safe (risk score 1/100). One thing to keep in mind: easy remote job offer."
     },
     {
       "id": "L17",
       "kind": "Package (real)",
       "label": 0,
       "verdict": "Likely Safe",
-      "risk": 0.0977,
-      "msg": 0.0605,
+      "risk": 0.0893,
+      "msg": 0.038,
       "top_flags": [
-        "Wording common in scams",
         "Claims to be an official office or service"
       ],
-      "explanation": "This looks safe (10% risk). One thing to keep in mind: claims to be an official office or service."
+      "explanation": "This looks safe (risk score 9/100). One thing to keep in mind: claims to be an official office or service."
     },
     {
       "id": "L18",
@@ -601,36 +573,32 @@
       "verdict": "Likely Safe",
       "risk": 0.0003,
       "msg": 0.0003,
-      "top_flags": [
-        "Wording common in scams"
-      ],
-      "explanation": "This looks safe (0% risk). We didn't find strong warning signs."
+      "top_flags": [],
+      "explanation": "This looks safe (risk score 0/100). We didn't find strong warning signs."
     },
     {
       "id": "L19",
       "kind": "Scholarship (real)",
       "label": 0,
       "verdict": "Likely Safe",
-      "risk": 0.0394,
-      "msg": 0.0051,
+      "risk": 0.039,
+      "msg": 0.0041,
       "top_flags": [
-        "Wording common in scams",
         "Too-good-to-be-true money or prize"
       ],
-      "explanation": "This looks safe (4% risk). We didn't find strong warning signs."
+      "explanation": "This looks safe (risk score 4/100). One thing to keep in mind: too-good-to-be-true money or prize."
     },
     {
       "id": "L20",
       "kind": "GitHub",
       "label": 0,
       "verdict": "Likely Safe",
-      "risk": 0.2805,
-      "msg": 0.3739,
+      "risk": 0.3393,
+      "msg": 0.4524,
       "top_flags": [
-        "Wording common in scams",
         "Asks for your password or login"
       ],
-      "explanation": "This looks safe (28% risk). We didn't find strong warning signs."
+      "explanation": "This looks safe (risk score 34/100). One thing to keep in mind: asks for your password or login."
     }
   ]
 }

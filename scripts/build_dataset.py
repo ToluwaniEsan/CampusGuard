@@ -62,6 +62,9 @@ def load_emails() -> pd.DataFrame:
     syn = pd.read_json(ROOT / "data" / "synthetic" / "campus_synthetic_train.jsonl", lines=True)
     parts.append(pd.DataFrame({"text": syn.text, "sender": syn.sender, "label": syn.label,
                                "source": np.where(syn.label == 1, "synthetic_phish", "synthetic_ham"), "year": 2026}))
+    v23 = pd.read_json(ROOT / "data" / "synthetic" / "v23_synthetic_train.jsonl", lines=True)
+    parts.append(pd.DataFrame({"text": v23.text, "sender": v23.sender, "label": v23.label,
+                               "source": np.where(v23.label == 1, "v23_synth_scam", "v23_synth_ham"), "year": 2026}))
     d = pd.concat(parts, ignore_index=True)
     d = d[d.text.notna() & ~d.text.str.contains("FOLDER INTERNAL DATA", na=False)]
     d["text"] = d.text.str.slice(0, 20000)
@@ -71,7 +74,7 @@ def load_emails() -> pd.DataFrame:
     d = d.reset_index(drop=True)
     d["norm"], d["clean"] = norms, cleans
     d = pd.concat([d, eng.reset_index(drop=True)], axis=1)
-    short_ok = d.source.isin(["sms_ham", "sms_scam", "modern_synth_scam", "modern_synth_ham"])
+    short_ok = d.source.isin(["sms_ham", "sms_scam", "modern_synth_scam", "modern_synth_ham", "v23_synth_scam", "v23_synth_ham"])
     d = d[d.clean.str.split().str.len().between(3, 4000) & (short_ok | (d.clean.str.split().str.len() >= 8))]
     d = d.drop_duplicates("clean").reset_index(drop=True)
     return d
@@ -80,7 +83,8 @@ def load_emails() -> pd.DataFrame:
 TRAIN_MIX = {"nazario": None, "fraud_scam": 1500, "synthetic_phish": None,
              "spamassassin_ham": 1300, "enron_ham": 1300, "ceas_ham": 1300, "ling_ham": 600,
              "synthetic_ham": None, "sms_ham": 1500, "sms_scam": 500,
-             "modern_synth_scam": None, "modern_synth_ham": None}
+             "modern_synth_scam": None, "modern_synth_ham": None,
+             "v23_synth_scam": None, "v23_synth_ham": None}
 
 
 def corpus(pool: pd.DataFrame) -> pd.DataFrame:

@@ -13,7 +13,8 @@ for _, r in te.sample(min(500, len(te)), random_state=1).iterrows():
     inputs.append({"text": r.text, "sender": r.sender if isinstance(r.sender, str) else None})
 urls = pd.read_pickle(ROOT / "data/processed/urls_balanced.pkl").url.sample(300, random_state=1)
 inputs += [{"text": u, "sender": None} for u in urls]
-for f in ["data/campus_eval/campus_synthetic.jsonl", "tests/realistic_battery.jsonl", "tests/blind_battery.jsonl"]:
+for f in ["data/campus_eval/campus_synthetic.jsonl", "tests/realistic_battery.jsonl", "tests/blind_battery.jsonl",
+          "tests/regression_cases.jsonl"]:
     p = ROOT / f
     if p.exists():
         inputs += [{"text": json.loads(l)["text"], "sender": json.loads(l).get("sender")} for l in open(p) if l.strip()]
@@ -21,7 +22,12 @@ inputs += [{"text": t, "sender": s} for t, s in [
     ("", None), ("hello", None), ("Café résumé &amp; naïve &#8217; &nbsp;​pass​word", None),
     ("<html><body><p>Dear user, <a href='http://1.2.3.4/x'>click</a></p></body></html>", "Help Desk <a@gmail.com>"),
     ("http://xn--pple-43d.com/login", None), ("bit.ly/abc", None), ("aamu.edu", None), ("PAYPAL ACCOUNT LOCKED!!! VERIFY NOW", "PayPal <service@paypa1.com>"),
-    ("Reply to j.doe@outlook.com for the job. $500 weekly", None)]]
+    ("Reply to j.doe@outlook.com for the job. $500 weekly", None),
+    # v2.3 folding / unspacing / leet / other languages / emoji offsets
+    ("V.E.R.I.F.Y y-o-u-r p a s s w o r d 😀 now at http://аpple-id.com/login", None),
+    ("Ваш аккаунт заблокирован. Отправьте пароль.", None), ("Straße naïve façade ﬁnance ½ 🙂 p@ssw0rd l0g1n", None),
+    ("¿Me envías la contraseña? 🙏 Es urgente, estoy en una reunión y no puedo hablar.", "Dra. López <lopez.office@gmail.com>"),
+    ("I'm in a meeting, can you buy 2 Google Play cards and send the codes? 🎁", None)]]
 tmp = ROOT / "tests" / "_in.jsonl"; out = ROOT / "tests" / "_out.jsonl"
 tmp.write_text("\n".join(json.dumps(x) for x in inputs))
 subprocess.run(["node", str(ROOT / "tests/parity_run.js"), str(tmp), str(out)], check=True)

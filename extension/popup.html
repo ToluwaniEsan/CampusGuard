@@ -7,9 +7,9 @@
   <div class="field"><label for="sender">From (optional)</label><input id="sender" placeholder="Name &lt;address@example.com&gt;"></div>
   <div class="field"><label for="text">Paste a message or link</label><textarea id="text" placeholder="Paste an email, text, DM or link…"></textarea></div>
   <div class="row"><button class="btn primary" id="check">Check it</button><button class="btn" id="full" hidden>Full analysis</button></div>
-  <div id="out" style="display:grid;gap:8px"></div>
+  <div id="out" style="display:grid;gap:8px" aria-live="polite"></div>
   <label class="muted" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="auto"> Scan emails automatically in Gmail &amp; Outlook</label>
-  <div class="muted">Runs on your device. Nothing is stored or sent. Links are never opened.</div>
+  <div class="muted">Checked on your device. Nothing is uploaded or saved, and links are never opened.</div>
   <script src="js/render.js"></script>
   <script src="js/popup.js"></script>
 </body>

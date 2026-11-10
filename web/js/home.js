@@ -26,12 +26,25 @@
     exit: '<path d="M10 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h5M17 16l4-4-4-4M21 12H9"/>',
     scissors: '<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/>',
     globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+    lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+    target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
+    stop: '<path d="M8 2h8l6 6v8l-6 6H8l-6-6V8z"/><path d="M12 7v6M12 17h.01"/>',
+    gift: '<rect x="3" y="8" width="18" height="13" rx="2"/><path d="M12 8v13M3 12h18M12 8c-2-4-6-4-6-1s6 1 6 1zM12 8c2-4 6-4 6-1s-6 1-6 1z"/>',
+    phoneoff: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2zM3 3l18 18"/>',
   };
   const SIGN = { urgency: "clock", threat: "alert", credential_request: "key", sensitive_info: "id", click_cta: "cursor", impersonation: "building",
     money_lure: "dollar", job_scam: "briefcase", generic_greeting: "userq", secrecy: "eyeoff", asks_for_secrets: "chat", upfront_payment: "card",
     shouting: "mega", suspicious_wording: "type", sender_freemail_official: "mail", n_urls: "link", url_ip_host: "hash", url_lookalike: "mask",
     url_many_subdomains: "link", url_shortener: "scissors", url_suspicious_tld: "globe", url_at_or_redirect: "link", url_sensitive_words: "key",
-    url_non_campus_official: "exit", sender_lookalike: "mask", sender_display_mismatch: "userq", sender_freemail: "mail", sender_trusted_risky_request: "user", url: "link" };
+    url_non_campus_official: "exit", sender_lookalike: "mask", sender_display_mismatch: "userq", sender_freemail: "mail", sender_trusted_risky_request: "user", url: "link", gift_card_request: "gift", unavailable_pretext: "phoneoff" };
+  // one-click examples (written for the page; not used in training or testing)
+  const EXAMPLES = {
+    aid: "From: AAMU Financial Aid <finaid@aamu-support.com>\nSubject: Action required: disbursement on hold\n\nDear Student,\nYour Spring refund of $1,850 is on hold because your account could not be verified. Log in within 24 hours at http://aamu-support.com/finaid/verify to release it, or the funds will be returned.\n\nOffice of Student Financial Aid",
+    gift: "Hi, it's Professor Grant. Are you free? I'm stuck in a faculty meeting and can't call. I need you to buy 3 Apple gift cards ($100 each) for a student award today. Scratch the backs and text me photos of the codes. I'll pay you back tomorrow.",
+    link: "http://aamu.edu.account-verify-login.xyz/portal/sso",
+    safe: "From: Career Development Services <careers@aamu.edu>\nSubject: Fall Career Fair\n\nJoin us at the Fall Career and Internship Fair on Thursday from 10am to 2pm in the Knight Center. Over 60 employers will attend. Bring copies of your resume and register on Handshake beforehand.",
+  };
+  const VERDICT_ICON = { high: "stop", medium: "alert", low: "check" };
 
   const S = { images: [], busy: false, docked: false, senderOverride: null, last: null, showAll: false, showText: false, ocrUsed: false };
   let engine = null, ocrWorker = null;
@@ -83,6 +96,9 @@
     ["dragenter", "dragover"].forEach(ev => document.addEventListener(ev, e => { if (e.dataTransfer && [...e.dataTransfer.types].indexOf("Files") !== -1) { e.preventDefault(); box().classList.add("drag"); } }));
     ["dragleave", "drop"].forEach(ev => document.addEventListener(ev, e => { if (ev === "drop") { e.preventDefault(); if (S.docked) undock(); addImages(e.dataTransfer.files); } box().classList.remove("drag"); }));
     $("#go").addEventListener("click", submit);
+    document.querySelectorAll(".ex").forEach(b => b.addEventListener("click", () => {
+      ta().value = EXAMPLES[b.dataset.ex]; S.senderOverride = null; autosize(); syncGo(); submit();
+    }));
     box().addEventListener("click", () => { if (S.docked) undock(); });
     box().addEventListener("keydown", e => { if (S.docked && e.target === box() && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); undock(); } });
   }
@@ -138,11 +154,30 @@
   }
   // Logging must never be able to break the reader: some hosts provide only part of `console`.
   function note(msg) { try { if (typeof console !== "undefined" && typeof console.log === "function") console.log(msg); } catch (e) { /* ignore */ } }
+  // v2.3: the reader (about 8 MB) is only fetched the first time someone adds an image, so the page
+  // itself opens fast. The offline single-file build already has it inside and skips the fetch.
+  let ocrLoading = null;
+  function loadOcrBundle() {
+    if (self.Tesseract && typeof window.__cgOcrBoot === "function") return Promise.resolve();
+    if (ocrLoading) return ocrLoading;
+    const meta = document.querySelector('meta[name="cg-ocr"]');
+    const src = meta ? meta.content : "ocr-bundle.js";
+    ocrLoading = new Promise((resolve, reject) => {
+      const sc = document.createElement("script");
+      sc.src = src; sc.async = true;
+      sc.onload = () => resolve();
+      sc.onerror = () => { ocrLoading = null; reject(new Error("Couldn't load the screenshot reader (" + src + ")")); };
+      document.head.appendChild(sc);
+    });
+    return ocrLoading;
+  }
   async function getOcr(onProgress) {
     if (ocrWorker) return ocrWorker;
-    const lang = document.getElementById("ocr-lang");
-    if (!self.Tesseract || !lang || typeof window.__cgOcrBoot !== "function") throw new Error("The screenshot reader is not bundled in this build");
-    const langs = () => [{ code: "eng", data: b64ToBytes(lang.textContent.trim()) }];
+    await loadOcrBundle();
+    const langEl = document.getElementById("ocr-lang");
+    const langB64 = langEl ? langEl.textContent.trim() : (window.__cgOcrLang || "");
+    if (!self.Tesseract || !langB64 || typeof window.__cgOcrBoot !== "function") throw new Error("The screenshot reader is not bundled in this build");
+    const langs = () => [{ code: "eng", data: b64ToBytes(langB64) }];
     const opts = url => ({ workerPath: url, workerBlobURL: false, cacheMethod: "none", logger: m => { if (m.status === "recognizing text" && onProgress) onProgress(m.progress); } });
     const tries = [
       async () => {            // 1. real background worker
@@ -180,7 +215,8 @@
     if (!S.docked) dock();
     if (S.images.length) {
       $("#read").innerHTML = "";
-      $("#r-body").innerHTML = '<div class="busy">Reading your screenshot<div class="barx"><i id="ocr-bar"></i></div></div>';
+      const first = !ocrWorker && !(self.Tesseract && typeof window.__cgOcrBoot === "function");
+      $("#r-body").innerHTML = '<div class="busy" role="status">' + (first ? "Getting the screenshot reader ready, then reading your screenshot" : "Reading your screenshot") + '<div class="barx"><i id="ocr-bar"></i></div></div>';
       await new Promise(r => requestAnimationFrame(() => setTimeout(r, 30)));     // let "Reading…" paint first
       try { ocrText = await readImages(p => { const b = document.getElementById("ocr-bar"); if (b) b.style.width = Math.max(8, Math.round(p * 100)) + "%"; }); }
       catch (e) { note("Screenshot reader failed: " + (e && e.message ? e.message : e)); ocrFail = true; }
@@ -207,7 +243,7 @@
   function gauge(v, thr, high) {
     const a = x => Math.PI * (1 - x), pt = (x, r) => [100 + r * Math.cos(a(x)), 100 - r * Math.sin(a(x))];
     const arc = (v0, v1, c) => { const [x0, y0] = pt(v0, 82), [x1, y1] = pt(v1, 82); return '<path d="M' + x0.toFixed(1) + " " + y0.toFixed(1) + " A82 82 0 0 1 " + x1.toFixed(1) + " " + y1.toFixed(1) + '" stroke="' + c + '" stroke-width="14" stroke-linecap="butt" fill="none"/>'; };
-    return '<svg class="gauge" viewBox="0 0 200 110" role="img" aria-label="Risk ' + pct(v) + ' percent">' + arc(0, thr, "var(--ok)") + arc(thr, high, "var(--warn)") + arc(high, 1, "var(--danger)") +
+    return '<svg class="gauge" viewBox="0 0 200 110" aria-hidden="true">' + arc(0, thr, "var(--ok)") + arc(thr, high, "var(--warn)") + arc(high, 1, "var(--danger)") +
       '<g class="needle" style="transform:rotate(-90deg)" data-deg="' + (-90 + v * 180) + '"><line x1="100" y1="100" x2="100" y2="34" stroke="var(--ink)" stroke-width="4" stroke-linecap="round"/></g><circle cx="100" cy="100" r="8" fill="var(--ink)"/></svg>';
   }
   function annotated(r) {
@@ -231,7 +267,10 @@
 
     const head = { high: p.kind === "link" ? "Don't open this link" : "Don't click, reply or pay", medium: "Be careful with this one", low: p.kind === "link" ? "This link looks fine" : "This looks fine" }[lvl];
     const act = (r.recommended_action || "").split(/(?<=\.)\s/)[0];
-    let h = '<div class="verdict lvl-' + lvl + '">' + gauge(r.risk_score, M.threshold, M.high_threshold) + '<div class="num" id="num">' + pct(r.risk_score) + "%</div><h2>" + head + "</h2>" + (act ? "<p>" + esc(act) + "</p>" : "") + "</div>";
+    let h = '<div class="verdict lvl-' + lvl + '"><div class="v-main"><div class="v-badge">' + ico(VERDICT_ICON[lvl]) + "<span>" + esc(r.verdict) + "</span></div><h2>" + head + "</h2>" + (act ? "<p>" + esc(act) + "</p>" : "") + "</div>" +
+      '<div class="v-score" title="How closely this matches known scams. It ranks risk; it is not a probability.">' + gauge(r.risk_score, M.threshold, M.high_threshold) +
+      '<div class="num" id="num">' + pct(r.risk_score) + "</div>" + '<div class="lbl">Risk score<small>out of 100, not a probability</small></div></div></div>';
+    const ann = $("#announce"); if (ann) { ann.textContent = ""; setTimeout(() => { ann.textContent = r.verdict + ". " + head + ". Risk score " + pct(r.risk_score) + " out of 100." + (act ? " " + act : ""); }, 60); }
 
     // why: content signs first, plain rows, a few at a time
     const flags = (r.red_flags || []).filter(f => f.flag !== "suspicious_wording").concat((r.red_flags || []).filter(f => f.flag === "suspicious_wording"));
@@ -265,21 +304,21 @@
   function playResult(r, M) {
     const token = ++playToken;
     const body = $("#r-body"), needle = body.querySelector(".needle"), num = $("#num"), verdict = body.querySelector(".verdict");
-    const seq = [...document.querySelectorAll("#read > *"), ...body.querySelectorAll(".verdict h2, .verdict p, .why h3, .sign, #more-signs, .how, .more, .note")];
+    const seq = [...document.querySelectorAll("#read > *"), ...body.querySelectorAll(".v-badge, .verdict h2, .verdict p, .v-score .lbl, .why h3, .sign, #more-signs, .how, .more, .note")];
     const late = seq.filter(el => !el.closest("#read"));
     late.forEach(el => el.classList.add("rv"));
     const target = r.risk_score, dur = 900 + 1100 * target;
     const zone = v => v >= M.high_threshold ? "var(--danger)" : v >= M.threshold ? "var(--warn)" : "var(--ok)";
-    needle.style.transform = "rotate(-90deg)"; num.textContent = "0%"; num.style.color = zone(0);
+    needle.style.transform = "rotate(-90deg)"; num.textContent = "0"; num.style.color = zone(0);
     verdict.classList.add("sweeping");
     const ease = k => 1 - Math.pow(1 - k, 3);
     function frame(now) {
       if (token !== playToken || !document.body.contains(needle)) return;
       const k = Math.min(1, (now - t0) / dur), v = target * ease(k);
       needle.style.transform = "rotate(" + (-90 + v * 180) + "deg)";
-      num.textContent = Math.round(v * 100) + "%"; num.style.color = zone(v);
+      num.textContent = Math.round(v * 100); num.style.color = zone(v);
       if (k < 1) return requestAnimationFrame(frame);
-      num.textContent = pct(target) + "%"; num.style.color = "";
+      num.textContent = pct(target); num.style.color = "";
       verdict.classList.remove("sweeping"); verdict.classList.add("landed");
       late.forEach((el, i) => setTimeout(() => { if (token === playToken) el.classList.add("in"); }, 180 + i * 140));
     }

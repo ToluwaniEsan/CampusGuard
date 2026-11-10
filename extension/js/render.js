@@ -6,9 +6,17 @@
   const TONE = { url_ip_host: "hi", url_lookalike: "hi", sender_freemail_official: "hi", credential_request: "hi", sensitive_info: "hi",
     asks_for_secrets: "hi", upfront_payment: "hi", threat: "hi", url_at_or_redirect: "hi", url: "hi", suspicious_wording: "word" };
 
+  const ICON = {
+    high: '<path d="M8 2h8l6 6v8l-6 6H8l-6-6V8z"/><path d="M12 7v6M12 17h.01"/>',
+    medium: '<path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4M12 17h.01"/>',
+    low: '<path d="m5 12 5 5 9-10"/>',
+  };
+  const HEAD = { high: "Don't click, reply or pay", medium: "Be careful with this one", low: "This looks fine" };
   function verdict(r) {
-    return '<div class="verdict lvl-' + r.risk_level + '"><div class="vtop"><span class="pill">' + esc(r.verdict) + '</span><span class="riskn">' + pct(r.risk_score) + '%</span></div>' +
-      '<div class="meter"><i style="width:' + pct(r.risk_score) + '%"></i></div><p class="expl">' + esc(r.explanation) + "</p>" +
+    const lvl = r.risk_level, head = r.input_type === "url" ? { high: "Don't open this link", medium: "Be careful with this link", low: "This link looks fine" }[lvl] : HEAD[lvl];
+    return '<div class="verdict lvl-' + lvl + '" role="status"><div class="vtop"><span class="badge"><svg viewBox="0 0 24 24" aria-hidden="true">' + ICON[lvl] + "</svg>" + esc(r.verdict) + "</span>" +
+      '<span class="score" title="How closely this matches known scams. It ranks risk; it is not a probability."><b>' + pct(r.risk_score) + "</b>risk score / 100</span></div>" +
+      '<h2 class="vhead">' + head + '</h2><p class="expl">' + esc(r.explanation) + "</p>" +
       (r.recommended_action ? '<div class="todo"><b>What to do:</b> ' + esc(r.recommended_action) + "</div>" : "") + "</div>";
   }
   function flags(r, max) {
@@ -29,7 +37,7 @@
   }
   function links(r) {
     if (!(r.urls || []).length) return "";
-    return '<div style="display:grid;gap:6px">' + r.urls.map(u => '<div class="link"><div class="u">' + esc(u.url) + '</div><div class="muted">Real owner: <b>' + esc(u.domain) + "</b> · " + pct(u.risk_score) + "% risky · never opened</div>" +
+    return '<div style="display:grid;gap:6px">' + r.urls.map(u => '<div class="link"><div class="u">' + esc(u.url) + '</div><div class="muted">Real owner: <b>' + esc(u.domain) + "</b> · link score " + pct(u.risk_score) + "/100 · never opened</div>" +
       (u.reasons.length ? "<ul>" + u.reasons.map(x => "<li>" + esc(x) + "</li>").join("") + "</ul>" : "") + "</div>").join("") + "</div>";
   }
   function good(r) {

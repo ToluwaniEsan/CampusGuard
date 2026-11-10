@@ -17,8 +17,8 @@ import numpy as np
 from .features import (ENGINEERED_NAMES, FREE_MAIL, TRUSTED_BRANDS, TRUSTED_CAMPUS_DOMAINS, URL_MODEL_FEATURES,
                        URL_MODEL_LABELS, flag_meta, lookalike_of, message_features, sender_profile, url_struct)
 from .psl import split_host
-from .model import PLACEHOLDERS, analyzer, tree_predict_explain
-from .preprocess import EMAIL_RE, URL_RE, clean_for_tfidf, normalise_raw
+from .model import PLACEHOLDERS, TOKEN_RX, analyzer, char_analyzer, r7, tree_predict_explain
+from .preprocess import EMAIL_RE, URL_RE, clean_for_tfidf, fold_text, normalise_raw
 
 MODELS = Path(__file__).resolve().parents[1] / "models"
 
@@ -28,6 +28,7 @@ ACTIONS = {
     "sensitive_info": "Never send SSN, bank, card or ID details by email or text. Call the office using a number from the official website.",
     "url_lookalike": "Don't click. The link only looks like a trusted address.",
     "job_scam": "Real campus jobs are posted through Career Services or Handshake. Don't reply to personal email addresses or send money.",
+    "gift_card_request": "Don't buy anything. Contact the person through a phone number or office you already know, not by replying. Gift-card codes can't be recovered once sent.",
     "money_lure": "Unexpected money or prizes that need a fee or your details are scams. Don't reply.",
     "impersonation": "If it claims to be a campus office, contact that office directly through aamu.edu, not through the message.",
     "sender_freemail": "Official offices don't write from Gmail/Yahoo. Contact the office through its official website.",
@@ -39,15 +40,25 @@ SAFE_ACTION = "No strong warning signs. If anything still feels off, contact the
 FLOOR_MEDIUM = {"url_lookalike", "url_ip_host", "url_at_or_redirect", "sender_freemail_official",
                 "sensitive_info", "credential_request"}
 STRUCT_FLOOR = 0.6   # IP-host, lookalike or punycode link present (part of the content)
+# v2.3: a message that asks you to send passwords, codes or ID numbers, or to buy gift cards and send the
+# codes, is at least Suspicious, however casual it sounds. These detectors fire on under 0.4% of real
+# legitimate mail in the training sources.
+REQUEST_FLOOR = 0.7
+REQUEST_FLOOR_FLAGS = ["asks_for_secrets", "gift_card_request"]
 # --- From line: the content leads, the sender only nudges (v2.2) -----------------------
 # A suspicious sender closes at most this share of the gap between the content score and 100%.
 SENDER_PULL = {"sender_lookalike": 0.30, "sender_display_mismatch": 0.20, "sender_freemail": 0.20}
 # An official sender removes at most this share of the content score, and only when the
 # content makes no risky request and every link is official. Hacked accounts are real.
 TRUSTED_SENDER_DISCOUNT = 0.25
-RISKY_REQUEST_FLAGS = ["asks_for_secrets", "upfront_payment"]
+RISKY_REQUEST_FLAGS = ["asks_for_secrets", "upfront_payment", "gift_card_request"]
 MAX_URLS = 10
 VERDICTS = {"high": "High Risk", "medium": "Suspicious", "low": "Likely Safe"}
+# Words never shown as evidence for "Wording common in scams" (they still count in the score).
+EVIDENCE_STOP = ["the", "and", "you", "your", "for", "this", "that", "with", "are", "our", "due", "has", "have",
+                 "will", "from", "not", "was", "can", "all", "any", "its", "his", "her", "they", "them", "but",
+                 "who", "how", "what", "when", "here", "there", "been", "were", "would", "could", "should"]
+WORDING_HIGH, WORDING_MEDIUM = 1.5, 0.5   # absolute SHAP contribution bands for the general wording flag
 
 
 def pct(x):
@@ -141,14 +152,20 @@ class CampusGuard:
         m = joblib.load(models_dir / "campusguard_message_model.joblib")
         self.vec, self.clf = m["vectorizer"], m["model"]
         self.threshold, self.high_threshold = m["threshold"], m["high_threshold"]
-        self.bg_mean = m["background_mean"]
+        self.bg_mean = r7(m["background_mean"])
         self.version = m.get("version", "2")
         self.vocab = self.vec.tfidf.vocabulary_
-        self.idf = self.vec.tfidf.idf_
+        self.idf = r7(self.vec.tfidf.idf_)
         self.n_words = len(self.idf)
-        self.coef = self.clf.coef_.ravel()
-        self.intercept = float(self.clf.intercept_[0])
-        self.scale = self.vec.scaler.scale_
+        ch = getattr(self.vec, "char", None)
+        self.cvocab = ch.vocabulary_ if ch is not None else {}
+        self.cidf = r7(ch.idf_) if ch is not None else []
+        self.cweight = getattr(self.vec, "char_weight", 1.0)
+        self.n_text = self.n_words + len(self.cidf)          # engineered red flags start here
+        self.grams = {self.n_words + i: g for g, i in self.cvocab.items()}
+        self.coef = r7(self.clf.coef_.ravel())
+        self.intercept = r7([self.clf.intercept_[0]])[0]
+        self.scale = r7(self.vec.scaler.scale_)
         self.w = self.vec.engineered_weight
         self.words = {i: w for w, i in self.vocab.items()}
         u = joblib.load(models_dir / "campusguard_url_model.joblib")
@@ -182,10 +199,20 @@ class CampusGuard:
         vals = {j: (1.0 + math.log(c)) * self.idf[j] for j, c in counts.items()}
         norm = math.sqrt(sum(v * v for v in vals.values())) or 1.0
         x = {j: v / norm for j, v in vals.items()}
+        if self.cvocab:
+            cc = {}
+            for g in char_analyzer(clean):
+                j = self.cvocab.get(g)
+                if j is not None:
+                    cc[j] = cc.get(j, 0) + 1
+            cv = {j: (1.0 + math.log(c)) * self.cidf[j] for j, c in cc.items()}
+            cn = math.sqrt(sum(v * v for v in cv.values())) or 1.0
+            for j, v in cv.items():
+                x[self.n_words + j] = v / cn * self.cweight
         for k, name in enumerate(ENGINEERED_NAMES):
             v = feats[name] / self.scale[k] * self.w
             if v != 0:
-                x[self.n_words + k] = v
+                x[self.n_text + k] = v
         return x
 
     def _message_score(self, x: dict):
@@ -201,7 +228,7 @@ class CampusGuard:
         p_msg, _ = self._message_score(x)
         # exact linear SHAP for present features: coef * (x - E[x])
         contrib = {j: float(self.coef[j] * (v - self.bg_mean[j])) for j, v in x.items()}
-        flags, highlights = self._flags(contrib, x, text, evidence)
+        flags, highlights = self._flags(contrib, x, text, evidence, clean)
 
         seen, url_reports = set(), []
         for s in url_structs:
@@ -215,6 +242,8 @@ class CampusGuard:
         # ---- 1. content score (text model + links); dangerous link structure is content
         if any(s["ip_host"] or s["lookalike"] or s["punycode"] for s in url_structs):
             risk = max(risk, STRUCT_FLOOR)
+        if any(feats.get(n, 0) > 0 for n in REQUEST_FLOOR_FLAGS):
+            risk = max(risk, REQUEST_FLOOR)
         content_risk = risk
 
         # ---- 2. From line: a bounded nudge that can never outweigh the content
@@ -249,9 +278,14 @@ class CampusGuard:
             else:
                 effect = "official_links_elsewhere"
         sender_check = build_sender_check(prof, effect, rate, content_risk, risk, bool(risky_asks))
+        level = self._level(risk)
+        if level == "low":
+            # v2.3: the general wording flag only explains a warning; on a safe verdict it confuses
+            flags = [f for f in flags if f["flag"] != "suspicious_wording"]
+            highlights = [h for h in highlights if h["flag"] != "suspicious_wording"]
+            self._severities(flags)
         flags = flags + sender_flags
 
-        level = self._level(risk)
         highlights = utf16_offsets(text, highlights)
         return {
             "input_type": "message", "verdict": VERDICTS[level], "risk_level": level,
@@ -275,16 +309,40 @@ class CampusGuard:
 
     def _normal_words(self, contrib):
         neg = [(c, self.words[j]) for j, c in contrib.items() if j < self.n_words and c < -0.05
-               and not (set(self.words[j].split()) & PLACEHOLDERS)]
+               and not (set(self.words[j].split()) & PLACEHOLDERS)
+               and any(len(p) >= 3 and p not in EVIDENCE_STOP for p in self.words[j].split())]
         neg.sort(key=lambda t: (t[0], t[1]))
         if not neg:
             return []
         return ["Reads like normal conversation: " + ", ".join(f'"{w}"' for _, w in neg[:4])]
 
-    def _flags(self, contrib, x, text, evidence):
+    def _word_contrib(self, contrib, clean):
+        """Word-level contributions: word features as they are, plus each letter group's
+        contribution shared out over the words it came from (v2.3)."""
+        out = {}
+        for j, c in contrib.items():
+            if j < self.n_words:
+                out[self.words[j]] = out.get(self.words[j], 0.0) + c
+        if self.cvocab:
+            per_tok, gram_total = [], {}
+            for tok in TOKEN_RX.findall(clean):
+                if tok in PLACEHOLDERS or len(tok) < 3:
+                    continue
+                gs = char_analyzer(tok)
+                per_tok.append((tok, gs))
+                for g in gs:
+                    gram_total[g] = gram_total.get(g, 0) + 1
+            for tok, gs in per_tok:
+                for g in gs:
+                    j = self.cvocab.get(g)
+                    if j is not None and (self.n_words + j) in contrib:
+                        out[tok] = out.get(tok, 0.0) + contrib[self.n_words + j] / gram_total[g]
+        return out
+
+    def _flags(self, contrib, x, text, evidence, clean=""):
         flags, highlights = [], []
         for k, name in enumerate(ENGINEERED_NAMES):
-            j = self.n_words + k
+            j = self.n_text + k
             c = contrib.get(j, 0.0)
             if j not in x or c <= 0.02:
                 continue
@@ -300,28 +358,28 @@ class CampusGuard:
                 if s >= 0:
                     highlights.append({"start": s, "end": e, "text": frag, "flag": name})
 
-        words = [(c, self.words[j]) for j, c in contrib.items() if j < self.n_words and c > 0.02
-                 and not (set(self.words[j].split()) & PLACEHOLDERS)]
+        wc = self._word_contrib(contrib, clean)
+        words = [(round(c, 8), w) for w, c in wc.items() if c > 0.02
+                 and not (set(w.split()) & PLACEHOLDERS)
+                 and any(len(p) >= 3 and p not in EVIDENCE_STOP for p in w.split())]
         words.sort(key=lambda t: (-t[0], t[1]))
         top = words[:8]
         if top:
-            flags.append({"flag": "suspicious_wording", "label": "Wording common in scams",
-                          "why": "These words and phrases show up far more often in scam messages.",
-                          "contribution": round(sum(c for c, _ in top), 4), "evidence": [w for _, w in top]})
-            lower = text.lower()
+            lower = fold_text(text).lower()      # same length as text, so offsets carry over
+            shown, spans = [], []
             for _, w in top:
                 parts = w.split()
                 pat = re.compile(r"\b" + r"[\W_]+".join(re.escape(p) for p in parts) + r"\b", re.I | re.A)
-                for m in list(pat.finditer(lower))[:3]:
-                    highlights.append({"start": m.start(), "end": m.end(), "text": text[m.start():m.end()],
-                                       "flag": "suspicious_wording"})
-        flags.sort(key=lambda f: -f["contribution"])
-        total = sum(f["contribution"] for f in flags) or 1.0
-        for f in flags:
-            share = f["contribution"] / total
-            f["severity"] = "High" if share >= 0.25 else "Medium" if share >= 0.10 else "Low"
-            if f["flag"] in FLOOR_MEDIUM and f["severity"] == "Low":
-                f["severity"] = "Medium"
+                ms = list(pat.finditer(lower))[:3]
+                shown.append(text[ms[0].start():ms[0].end()] if ms else w)
+                for m in ms:
+                    spans.append({"start": m.start(), "end": m.end(), "text": text[m.start():m.end()],
+                                  "flag": "suspicious_wording"})
+            flags.append({"flag": "suspicious_wording", "label": "Wording common in scams",
+                          "why": "These words and phrases show up far more often in scam messages.",
+                          "contribution": round(sum(c for c, _ in top), 4), "evidence": shown})
+            highlights.extend(spans)
+        self._severities(flags)
         highlights.sort(key=lambda h: (h["start"], -(h["end"] - h["start"])))
         merged = []
         for h in highlights:
@@ -329,6 +387,20 @@ class CampusGuard:
                 continue
             merged.append(h)
         return flags, merged
+
+    @staticmethod
+    def _severities(flags):
+        flags.sort(key=lambda f: -f["contribution"])
+        total = sum(f["contribution"] for f in flags) or 1.0
+        for f in flags:
+            share = f["contribution"] / total
+            if f["flag"] == "suspicious_wording":
+                c = f["contribution"]
+                f["severity"] = "High" if c >= WORDING_HIGH else "Medium" if c >= WORDING_MEDIUM else "Low"
+                continue
+            f["severity"] = "High" if share >= 0.25 else "Medium" if share >= 0.10 else "Low"
+            if f["flag"] in FLOOR_MEDIUM and f["severity"] == "Low":
+                f["severity"] = "Medium"
 
     # ------------------------------------------------------------------ URL path
     def _score_url(self, url):
@@ -398,11 +470,11 @@ class CampusGuard:
     def _plain_english(level, risk, flags, urls):
         pct = round(risk * 100)
         if level == "low":
-            head = f"This looks safe ({pct}% risk)."
+            head = f"This looks safe (risk score {pct}/100)."
             minor = [f for f in flags if f["flag"] != "suspicious_wording" and f["severity"] == "High"]
             return head + (" We didn't find strong warning signs." if not minor else
                            f" One thing to keep in mind: {minor[0]['label'].lower()}.")
-        head = ("This looks like a scam" if level == "high" else "This message is suspicious") + f" ({pct}% risk)."
+        head = ("This looks like a scam" if level == "high" else "This message is suspicious") + f" (risk score {pct}/100)."
         content = [f for f in flags if not f["flag"].startswith("sender_")]
         ordered = [f for f in content if f["flag"] != "suspicious_wording"] + \
                   [f for f in content if f["flag"] == "suspicious_wording"]
@@ -425,7 +497,7 @@ def llm_prompt(result: dict) -> str:
     flags = "\n".join(f"- {f['label']}: {', '.join(map(str, f.get('evidence') or []))}" for f in result["red_flags"][:6])
     return ("You explain phishing warnings to college students in plain, friendly English. Max 70 words, no jargon, "
             "no markdown.\n"
-            f"Verdict: {result['verdict']} ({round(result['risk_score'] * 100)}% risk).\n"
+            f"Verdict: {result['verdict']} (risk score {round(result['risk_score'] * 100)}/100).\n"
             f"Red flags found by the detector:\n{flags or '- none'}\n"
             "Explain why these signs matter and what the student should do next. "
             "Do not invent red flags that are not listed and do not change the verdict.")

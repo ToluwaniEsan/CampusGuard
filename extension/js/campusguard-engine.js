@@ -59,6 +59,13 @@
     const EMAIL_ONE = rx1(M.patterns.email[0], "i");
     const ENTITY_RE = /&(#x[0-9a-f]{1,6}|#\d{1,7}|[a-z0-9]{2,8});/gi;
     const TOKEN_RE = new RegExp(MM.token_src, "g");
+    const N_TEXT = MM.n_text !== undefined ? MM.n_text : MM.n_words;   // engineered red flags start here
+    const CHAR = MM.char || null;                                          // v2.3 letter groups
+    const cvocab = new Map();
+    if (CHAR) CHAR.terms.forEach((g, i) => cvocab.set(g, i));
+    const FOLD = M.fold || {};
+    const LEET = M.leet || {};
+    const EVIDENCE_STOP = new Set(INF.evidence_stop || []);
     const TEXT_FLAGS = M.text_flags.map(f => ({ name: f.name, label: f.label, why: f.why, res: f.patterns.map(p => rx(p, "i")) }));
     const FLAG_NAMES = TEXT_FLAGS.map(f => f.name);
     const NEG = rx1(M.negation_src, "i");
@@ -125,6 +132,7 @@
       t = unescape(t);
       t = sub("zero_width", "", t);
       t = sub("uni_space", " ", t);
+      if (P.spaced_word) t = sub("spaced_word", m0 => m0.replace(/[^A-Za-z]/g, ""), t);
       t = sub("header_line", " ", t);
       t = sub("header_token", " ", t);
       t = sub("footer", " ", t);
@@ -135,8 +143,13 @@
       t = sub("multi_newline", "\n\n", t);
       return pyStrip(t);
     }
+    function foldText(text) {
+      let o = "";
+      for (let i = 0; i < text.length; i++) { const c = text[i]; o += Object.prototype.hasOwnProperty.call(FOLD, c) ? FOLD[c] : c; }
+      return P.leet ? sub("leet", m0 => LEET[m0], o) : o;
+    }
     function cleanForTfidf(norm) {
-      let t = norm;
+      let t = foldText(norm);
       t = sub("email", " emailtoken ", t);
       t = sub("url", " urltoken ", t);
       t = sub("source_names", " ", t);
@@ -202,21 +215,53 @@
       if (path.indexOf("?") !== -1) { query = path.slice(path.indexOf("?") + 1); path = path.slice(0, path.indexOf("?")); }
       return [rest, stripChars(host.toLowerCase(), "."), port, path, query];
     }
+    const ATTACK = C.attack_words || [];
+    function attackPart(rem) {
+      rem = stripChars(rem, "-.0123456789");
+      return rem === "" || ATTACK.indexOf(rem) !== -1 || ATTACK.some(w => w.length >= 3 && (rem.startsWith(w) || rem.endsWith(w)));
+    }
     function lookalikeOf(sld, sub_, registered) {
       if (!registered || trustedAll.indexOf(registered) !== -1) return "";
-      const sldN = homoglyph(sld).split("-").join("");
-      const subN = homoglyph(sub_.toLowerCase());
+      const tld = registered.split(".").pop();
+      const riskyHost = C.suspicious_tlds.indexOf(tld) !== -1 || (C.free_hosts || []).indexOf(registered) !== -1 ||
+        sld.indexOf("-") !== -1 || C.sensitive_url_words.some(w => sld.indexOf(w) !== -1);
+      const sldH = homoglyph(sld).split("rn").join("m").split("vv").join("w");
+      const sldN = sldH.split("-").join("");
+      const subH = homoglyph(sub_.toLowerCase());
+      const subTokens = subH.split(/[.-]/).filter(Boolean);
       for (const dom of trustedAll) {
         const base = dom.split(".")[0];
         if (base.length < 4 && base !== "aamu") continue;
-        if (sld.indexOf(base) !== -1 && sld !== base) return dom;
-        if (sldN.length >= 4 && lev(sldN, base) <= (base.length <= 5 ? 1 : 2)) return dom;
-        if (subN.indexOf(base) !== -1) return dom;
+        if (sldN.indexOf(base) !== -1 && sldN !== base && (sld.indexOf("-") !== -1 || attackPart(sldN.replace(base, "")))) return dom;
+        if (sldN === base && (sld !== base || C.suspicious_tlds.indexOf(tld) !== -1)) return dom;
+        if (base.length >= 6 && sldN.length >= 5 && sldN !== base && lev(sldN, base) <= (base.length < 9 ? 1 : 2)) return dom;
+        if (subH.indexOf(dom) !== -1 || (subTokens.indexOf(base) !== -1 && riskyHost)) return dom;
       }
       for (const kw of C.lookalike_keywords) {
         if (sld.indexOf(kw) !== -1 || sub_.toLowerCase().indexOf(kw) !== -1) return stripChars(kw, "-");
       }
       return "";
+    }
+    function brandDistance(sld, registered) {
+      const trusted = C.trusted_campus_domains.concat(brandKeys);
+      if (!sld || trusted.indexOf(registered) !== -1) return 3;
+      const sN = homoglyph(sld).split("-").join("");
+      let best = 3;
+      for (const dom of trusted) {
+        const base = dom.split(".")[0];
+        if (base.length < 4 && base !== "aamu") continue;
+        best = Math.min(best, lev(sN, base));
+      }
+      return best;
+    }
+    function letterShape(sld) {
+      let letters = 0, vow = 0, run = 0, best = 0;
+      for (const c of sld) {
+        const isL = c >= "a" && c <= "z", isV = "aeiou".indexOf(c) !== -1;
+        if (isL) { letters++; if (isV) vow++; }
+        if (isL && !isV) { run++; best = Math.max(best, run); } else run = 0;
+      }
+      return [letters ? vow / letters : 0, best];
     }
     function urlStruct(url) {
       const [rest, host, port, path, query] = parseUrl(url);
@@ -235,6 +280,9 @@
       let hostDigits = 0; for (const ch of host) if (ch >= "0" && ch <= "9") hostDigits++;
       let special = 0; for (const ch of "-_=&%~+") special += count(lowerRest, ch);
       const subL = sub_.toLowerCase();
+      const [vowelRatio, consRun] = ip ? [0, 0] : letterShape(sld);
+      let sldDigits = 0; if (!ip) for (const ch of sld) if (ch >= "0" && ch <= "9") sldDigits++;
+      const freeHosts = C.free_hosts || [];
       return {
         host: host, registered_domain: registered, lookalike_target: look,
         ip_host: ip ? 1 : 0, lookalike: look ? 1 : 0, n_subdomains: subParts.length,
@@ -257,6 +305,13 @@
         php_or_html: FILE_RX.test(pathQ) ? 1 : 0,
         campus_domain: C.trusted_campus_domains.indexOf(registered) !== -1 ? 1 : 0,
         trusted_brand: brandKeys.indexOf(registered) !== -1 ? 1 : 0,
+        brand_dist: ip ? 3 : brandDistance(sld, registered),
+        sld_len: ip ? 0 : sld.length,
+        vowel_ratio: vowelRatio, consonant_run: consRun, digits_sld: sldDigits,
+        tld_len: tld.length,
+        n_params: query ? count(query, "&") + 1 : 0,
+        path_hyphens: count(path, "-"),
+        free_host: freeHosts.some(f => host === f || host.endsWith("." + f)) ? 1 : 0,
       };
     }
 
@@ -268,13 +323,14 @@
     }
     function findTextFlags(text) {
       const out = {};
+      const folded = foldText(text);   // same length: offsets point into text
       for (const f of TEXT_FLAGS) {
         let spans = [];
         for (const re of f.res) {
-          for (const m of finditer(re, text)) {
+          for (const m of finditer(re, folded)) {
             if (m[0].length === 0) continue;
-            if (M.negated_flags.indexOf(f.name) !== -1 && NEG.test(sentence(text, m.index))) continue;
-            spans.push([m.index, m.index + m[0].length, m[0]]);
+            if (M.negated_flags.indexOf(f.name) !== -1 && NEG.test(sentence(folded, m.index))) continue;
+            spans.push([m.index, m.index + m[0].length, text.slice(m.index, m.index + m[0].length)]);
           }
         }
         spans.sort((a, b) => a[0] - b[0] || b[1] - a[1]);
@@ -419,6 +475,16 @@
       for (let i = 0; i < toks.length - 1; i++) grams.push(toks[i] + " " + toks[i + 1]);
       return { toks, grams };
     }
+    function charAnalyzer(clean) {
+      const out = [];
+      const ph = new Set(INF.placeholders);
+      for (const tok of (clean.match(TOKEN_RE) || [])) {
+        if (ph.has(tok) || tok.length < 3) continue;
+        const w = " " + tok + " ";
+        for (let n = CHAR.min_n; n <= CHAR.max_n; n++) for (let i = 0; i + n <= w.length; i++) out.push(w.slice(i, i + n));
+      }
+      return out;
+    }
     function vectorise(clean, feats) {
       const { toks, grams } = analyzer(clean);
       const counts = new Map();
@@ -429,9 +495,17 @@
       const norm = Math.sqrt(ss) || 1;
       const x = new Map();
       for (const [j, v] of vals) x.set(j, v / norm);
+      if (CHAR) {
+        const cc = new Map();
+        for (const g of charAnalyzer(clean)) { const j = cvocab.get(g); if (j !== undefined) cc.set(j, (cc.get(j) || 0) + 1); }
+        const cv = new Map(); let cs = 0;
+        for (const [j, c] of cc) { const v = (1 + Math.log(c)) * CHAR.idf[j]; cv.set(j, v); cs += v * v; }
+        const cn = Math.sqrt(cs) || 1;
+        for (const [j, v] of cv) x.set(MM.n_words + j, v / cn * CHAR.weight);
+      }
       ENG.forEach((name, k) => {
         const v = feats[name] / MM.eng_scale[k] * MM.eng_weight;
-        if (v !== 0) x.set(MM.n_words + k, v);
+        if (v !== 0) x.set(N_TEXT + k, v);
       });
       return { x, toks, grams, counts };
     }
@@ -484,10 +558,43 @@
 
     function level(p) { return p >= MM.high_threshold ? "high" : p >= MM.threshold ? "medium" : "low"; }
 
-    function buildFlags(contrib, x, text, evidence) {
+    function wordContrib(contrib, clean) {
+      const out = new Map();
+      for (const [j, c] of contrib) if (j < MM.n_words) { const w = MM.terms[j]; out.set(w, (out.get(w) || 0) + c); }
+      if (CHAR) {
+        const ph = new Set(INF.placeholders);
+        const perTok = [], total = new Map();
+        for (const tok of (clean.match(TOKEN_RE) || [])) {
+          if (ph.has(tok) || tok.length < 3) continue;
+          const gs = charAnalyzer(tok);
+          perTok.push([tok, gs]);
+          for (const g of gs) total.set(g, (total.get(g) || 0) + 1);
+        }
+        for (const [tok, gs] of perTok) for (const g of gs) {
+          const j = cvocab.get(g);
+          if (j !== undefined && contrib.has(MM.n_words + j)) out.set(tok, (out.get(tok) || 0) + contrib.get(MM.n_words + j) / total.get(g));
+        }
+      }
+      return out;
+    }
+    function severities(flags) {
+      flags.sort((a, b) => b.contribution - a.contribution);
+      const total = flags.reduce((a, f) => a + f.contribution, 0) || 1;
+      for (const f of flags) {
+        const share = f.contribution / total;
+        if (f.flag === "suspicious_wording") {
+          const c = f.contribution;
+          f.severity = c >= INF.wording_high ? "High" : c >= INF.wording_medium ? "Medium" : "Low";
+          continue;
+        }
+        f.severity = share >= 0.25 ? "High" : share >= 0.10 ? "Medium" : "Low";
+        if (INF.floor_medium.indexOf(f.flag) !== -1 && f.severity === "Low") f.severity = "Medium";
+      }
+    }
+    function buildFlags(contrib, x, text, evidence, clean) {
       const flags = [], highlights = [];
       ENG.forEach((name, k) => {
-        const j = MM.n_words + k;
+        const j = N_TEXT + k;
         const c = contrib.has(j) ? contrib.get(j) : 0;
         if (!x.has(j) || c <= 0.02) return;
         const [label, why] = flagMeta(name);
@@ -499,32 +606,28 @@
       });
       const ph = new Set(INF.placeholders);
       const words = [];
-      for (const [j, c] of contrib) {
-        if (j < MM.n_words && c > 0.02) {
-          const w = MM.terms[j];
-          if (!w.split(" ").some(p => ph.has(p))) words.push([c, w]);
-        }
+      for (const [w, c] of wordContrib(contrib, clean || "")) {
+        if (c > 0.02 && !w.split(" ").some(p => ph.has(p)) && w.split(" ").some(p => p.length >= 3 && !EVIDENCE_STOP.has(p)))
+          words.push([pyRound(c, 8), w]);
       }
       words.sort((a, b) => (b[0] - a[0]) || (a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0));
       const top = words.slice(0, 8);
       if (top.length) {
-        flags.push({ flag: "suspicious_wording", label: "Wording common in scams",
-          why: "These words and phrases show up far more often in scam messages.",
-          contribution: pyRound(top.reduce((a, t) => a + t[0], 0), 4), evidence: top.map(t => t[1]) });
-        const lower = text.toLowerCase();
+        const lower = foldText(text).toLowerCase();
+        const shown = [], spans = [];
         for (const [, w] of top) {
           const re = new RegExp("\\b" + w.split(" ").map(escapeRe).join("[\\W_]+") + "\\b", "gi");
-          finditer(re, lower).slice(0, 3).forEach(m => highlights.push({ start: m.index, end: m.index + m[0].length,
+          const ms = finditer(re, lower).slice(0, 3);
+          shown.push(ms.length ? text.slice(ms[0].index, ms[0].index + ms[0][0].length) : w);
+          ms.forEach(m => spans.push({ start: m.index, end: m.index + m[0].length,
             text: text.slice(m.index, m.index + m[0].length), flag: "suspicious_wording" }));
         }
+        flags.push({ flag: "suspicious_wording", label: "Wording common in scams",
+          why: "These words and phrases show up far more often in scam messages.",
+          contribution: pyRound(top.reduce((a, t) => a + t[0], 0), 4), evidence: shown });
+        for (const h of spans) highlights.push(h);
       }
-      flags.sort((a, b) => b.contribution - a.contribution);
-      const total = flags.reduce((a, f) => a + f.contribution, 0) || 1;
-      for (const f of flags) {
-        const share = f.contribution / total;
-        f.severity = share >= 0.25 ? "High" : share >= 0.10 ? "Medium" : "Low";
-        if (INF.floor_medium.indexOf(f.flag) !== -1 && f.severity === "Low") f.severity = "Medium";
-      }
+      severities(flags);
       highlights.sort((a, b) => (a.start - b.start) || ((b.end - b.start) - (a.end - a.start)));
       const merged = [];
       for (const h of highlights) { if (merged.length && h.start < merged[merged.length - 1].end) continue; merged.push(h); }
@@ -534,11 +637,11 @@
     function plainEnglish(lvl, risk, flags, urls) {
       const pct = pyRound(risk * 100, 0);
       if (lvl === "low") {
-        const head = "This looks safe (" + pct + "% risk).";
+        const head = "This looks safe (risk score " + pct + "/100).";
         const minor = flags.filter(f => f.flag !== "suspicious_wording" && f.severity === "High");
         return head + (!minor.length ? " We didn't find strong warning signs." : " One thing to keep in mind: " + minor[0].label.toLowerCase() + ".");
       }
-      const head = (lvl === "high" ? "This looks like a scam" : "This message is suspicious") + " (" + pct + "% risk).";
+      const head = (lvl === "high" ? "This looks like a scam" : "This message is suspicious") + " (risk score " + pct + "/100).";
       const content = flags.filter(f => f.flag.indexOf("sender_") !== 0);
       const ordered = content.filter(f => f.flag !== "suspicious_wording").concat(content.filter(f => f.flag === "suspicious_wording"));
       const parts = [];
@@ -574,7 +677,7 @@
       const pMsg = sigmoid(z);
       const contrib = new Map();
       for (const [j, v] of vec.x) contrib.set(j, MM.coef[j] * (v - MM.mean[j]));
-      const { flags, highlights } = buildFlags(contrib, vec.x, mf.text, mf.evidence);
+      let { flags, highlights } = buildFlags(contrib, vec.x, mf.text, mf.evidence, clean);
       const seen = new Set(), urlReports = [];
       for (const s of mf.structs) {
         if (seen.has(s.url) || urlReports.length >= INF.max_urls) continue;
@@ -588,6 +691,10 @@
       if (mf.structs.some(s => s.ip_host || s.lookalike || s.punycode)) {
         if (INF.struct_floor > risk) rulesApplied.push({ rule: "Dangerous link structure", floor: INF.struct_floor });
         risk = Math.max(risk, INF.struct_floor);
+      }
+      if ((INF.request_floor_flags || []).some(n => (mf.feats[n] || 0) > 0)) {
+        if (INF.request_floor > risk) rulesApplied.push({ rule: "Asks for secrets, codes or gift cards", floor: INF.request_floor });
+        risk = Math.max(risk, INF.request_floor);
       }
       const contentRisk = risk;
       // ---- 2. From line: a bounded nudge that can never outweigh the content
@@ -621,14 +728,19 @@
       }
       const senderCheck = buildSenderCheck(prof, effect, rate, contentRisk, risk, riskyAsks.length > 0);
       if (effect === "raise" || effect === "lower") rulesApplied.push({ rule: effect === "raise" ? "Sender adjustment (suspicious sender)" : "Sender adjustment (official sender)", from: contentRisk, to: risk });
-      for (const f of senderFlags) flags.push(f);
       const lvl = level(risk);
+      if (lvl === "low") {   // v2.3: the general wording flag only explains a warning
+        flags = flags.filter(f => f.flag !== "suspicious_wording");
+        highlights = highlights.filter(h => h.flag !== "suspicious_wording");
+        severities(flags);
+      }
+      for (const f of senderFlags) flags.push(f);
       // ---- trace (for the "how it works" animation)
       const termContrib = [];
       for (const [j, c] of contrib) if (j < MM.n_words) termContrib.push({ term: MM.terms[j], tfidf: vec.x.get(j), contribution: c });
       termContrib.sort((a, b) => b.contribution - a.contribution);
       const engContrib = ENG.map((name, k) => ({ name, label: flagMeta(name)[0], value: mf.feats[name],
-        contribution: contrib.has(MM.n_words + k) ? contrib.get(MM.n_words + k) : 0 })).filter(e => e.value !== 0);
+        contribution: contrib.has(N_TEXT + k) ? contrib.get(N_TEXT + k) : 0 })).filter(e => e.value !== 0);
       const trace = {
         raw: content, normalised: norm, cleaned: clean, tokens: vec.toks, n_tokens: vec.toks.length,
         n_grams: vec.grams.length, vocab_hits: vec.counts.size, vocab_size: MM.n_words,
@@ -657,7 +769,7 @@
       const ph = new Set(INF.placeholders);
       const neg = [];
       for (const [j, c] of contrib) {
-        if (j < MM.n_words && c < -0.05) { const w = MM.terms[j]; if (!w.split(" ").some(p => ph.has(p))) neg.push([c, w]); }
+        if (j < MM.n_words && c < -0.05) { const w = MM.terms[j]; if (!w.split(" ").some(p => ph.has(p)) && w.split(" ").some(p => p.length >= 3 && !EVIDENCE_STOP.has(p))) neg.push([c, w]); }
       }
       neg.sort((a, b) => (a[0] - b[0]) || (a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0));
       if (!neg.length) return [];
@@ -699,7 +811,7 @@
     function llmPrompt(result) {
       const flags = result.red_flags.slice(0, 6).map(f => "- " + f.label + ": " + (f.evidence || []).join(", ")).join("\n");
       return "You explain phishing warnings to college students in plain, friendly English. Max 70 words, no jargon, no markdown.\n" +
-        "Verdict: " + result.verdict + " (" + pyRound(result.risk_score * 100, 0) + "% risk).\n" +
+        "Verdict: " + result.verdict + " (risk score " + pyRound(result.risk_score * 100, 0) + "/100).\n" +
         "Red flags found by the detector:\n" + (flags || "- none") + "\n" +
         "Explain why these signs matter and what the student should do next. Do not invent red flags that are not listed and do not change the verdict.";
     }
