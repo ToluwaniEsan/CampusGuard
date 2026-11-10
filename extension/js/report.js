@@ -11,7 +11,7 @@
       '</ul><div class="todo" style="font-family:var(--f-mono)">' + R.esc(sc.formula) + "</div><p class=\"expl\">" + R.esc(sc.summary) + "</p></div></section>";
     if (r.input_type === "message") h += "<section><h2>The message, marked up</h2>" + R.annotated(r) + "</section>";
     if ((r.urls || []).length) h += "<section><h2>Links (read as text, never opened)</h2>" + R.links(r) + "</section>";
-    h += '<section><h2>Report it</h2><div class="todo">In Gmail, open the message menu (⋮) and choose <b>Report phishing</b>. In Outlook, choose <b>Report → Report phishing</b>. Then delete it. If you clicked a link or entered your password, change your password and contact the campus IT help desk right away.</div></section>';
+    if (r.risk_level !== "low") h += '<section><h2>Report it</h2><div class="todo">' + R.esc(CGSites.reportTip(p.url || "")) + "</div></section>";
     document.getElementById("body").innerHTML = h;
     chrome.storage.session.remove("cgReport");
   });

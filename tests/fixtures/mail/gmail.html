@@ -1,0 +1,17 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Inbox - student@example.edu - Gmail</title></head>
+<body style="font-family:Arial;margin:0"><div style="display:flex"><div style="width:200px;background:#f6f8fc;min-height:100vh;padding:16px">Inbox<br>Starred<br>Sent</div>
+<div id="main" role="main" style="flex:1;padding:20px"></div></div>
+<script>
+const MAILS = {
+  phish: { subject: "URGENT: Verify Your Financial Aid Information", name: "Alabama A&M University Financial Aid", email: "financialaid@aamu-support.com",
+    body: 'Dear Student,<br><br>Your financial aid account requires immediate verification. Click below within 24 hours to prevent your account from being suspended.<br><br><a href="http://aamu-support.com/finaid/verify-login">Verify Your Account</a><br><br>Thank you,<br>AAMU Financial Aid Office' },
+  legit: { subject: "Re: CS410 homework question", name: "Dr. Monica Reed", email: "monica.reed@aamu.edu",
+    body: "Hi,<br>Good question. For part B you only need the time complexity analysis. I'll clarify in class Tuesday.<br>Best,<br>Dr. Reed" },
+};
+function render() {
+  const id = location.hash.split("/")[1], m = MAILS[id], main = document.getElementById("main");
+  if (!m) { main.innerHTML = '<table><tr><td>Dr. Monica Reed</td><td>Re: CS410 homework question</td></tr><tr><td>Financial Aid</td><td>URGENT: Verify</td></tr></table>'; return; }
+  main.innerHTML = '<h2 class="hP">' + m.subject + '</h2><div class="adn ads"><div><span class="gD" email="' + m.email + '" name="' + m.name + '">' + m.name + '</span></div><div class="a3s aiL">' + m.body + '</div></div>';
+}
+window.addEventListener("hashchange", render); render();
+</script></body></html>

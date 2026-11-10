@@ -18,6 +18,7 @@ def pack(name, manifest):
 m = json.loads((EXT / "manifest.json").read_text())
 pack("campusguard-extension-chromium.zip", m)
 ff = json.loads(json.dumps(m))
-ff["background"] = {"scripts": ["model/campusguard-model.js", "js/campusguard-engine.js", "background.js"]}
+ff["background"] = {"scripts": ["model/campusguard-model.js", "js/campusguard-engine.js", "js/sites.js", "background.js"]}
+ff["permissions"] = [x for x in ff["permissions"] if x != "declarativeContent"]   # Firefox has no declarativeContent; the icon is set per tab instead
 ff["browser_specific_settings"] = {"gecko": {"id": "campusguard@team-catalysts", "strict_min_version": "115.0"}}
 pack("campusguard-extension-firefox.zip", ff)

@@ -1,15 +1,40 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><title>CampusGuard</title><link rel="stylesheet" href="css/ext.css">
-<style>body{width:380px;padding:12px;display:grid;gap:10px}.row{display:flex;gap:8px;align-items:center;justify-content:space-between}</style></head>
+<head><meta charset="utf-8"><title>CampusGuard</title><link rel="stylesheet" href="css/ext.css"><link rel="stylesheet" href="css/popup.css"></head>
 <body>
-  <div class="row"><div class="brand"><img src="icons/icon48.png" alt=""><div><b>CampusGuard</b><small>Detect. Explain. Stay safe.</small></div></div><span class="muted" id="ver"></span></div>
-  <div class="field"><label for="sender">From (optional)</label><input id="sender" placeholder="Name &lt;address@example.com&gt;"></div>
-  <div class="field"><label for="text">Paste a message or link</label><textarea id="text" placeholder="Paste an email, text, DM or link…"></textarea></div>
-  <div class="row"><button class="btn primary" id="check">Check it</button><button class="btn" id="full" hidden>Full analysis</button></div>
-  <div id="out" style="display:grid;gap:8px" aria-live="polite"></div>
-  <label class="muted" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="auto"> Scan emails automatically in Gmail &amp; Outlook</label>
-  <div class="muted">Checked on your device. Nothing is uploaded or saved, and links are never opened.</div>
+  <header class="phead">
+    <div class="brand"><img src="icons/icon48.png" alt=""><div><b>CampusGuard</b><small>Detect. Explain. Stay safe.</small></div></div>
+    <span class="site" id="site" hidden></span>
+  </header>
+  <nav class="tabs" role="tablist" aria-label="CampusGuard">
+    <button role="tab" id="t-email" aria-controls="p-email" aria-selected="true">This email</button>
+    <button role="tab" id="t-paste" aria-controls="p-paste" aria-selected="false" tabindex="-1">Paste a message</button>
+    <button role="tab" id="t-settings" aria-controls="p-settings" aria-selected="false" tabindex="-1">Settings</button>
+  </nav>
+
+  <section role="tabpanel" id="p-email" aria-labelledby="t-email" class="panel">
+    <div id="email-out" aria-live="polite"><p class="muted">Looking for an open email…</p></div>
+  </section>
+
+  <section role="tabpanel" id="p-paste" aria-labelledby="t-paste" class="panel" hidden>
+    <div class="field"><label for="sender">From (optional)</label><input id="sender" placeholder="Name &lt;address@example.com&gt;"></div>
+    <div class="field"><label for="text">Paste a message or link</label><textarea id="text" placeholder="Paste an email, text, DM or link…"></textarea></div>
+    <div class="row"><button class="btn primary" id="check">Check it</button><button class="btn" id="full" hidden>Full analysis</button></div>
+    <div id="out" class="stack" aria-live="polite"></div>
+  </section>
+
+  <section role="tabpanel" id="p-settings" aria-labelledby="t-settings" class="panel" hidden>
+    <h3 class="sh">Checking</h3>
+    <label class="opt"><span><b>Check each email when I open it</b><small>Off: click CampusGuard to check the open email.</small></span><input type="checkbox" role="switch" id="s-auto"></label>
+    <label class="opt"><span><b>Show a card inside the email</b><small>Adds a small CampusGuard card above the open email. Off by default.</small></span><input type="checkbox" role="switch" id="s-card"></label>
+    <h3 class="sh">Email sites you allowed</h3>
+    <div id="s-sites" class="stack"></div>
+    <h3 class="sh">Privacy</h3>
+    <p class="muted" style="margin:0">CampusGuard reads only the email that is open, and only on sites you allow. It runs on this device, makes no network requests and saves no email text. Results disappear when you close the tab.</p>
+  </section>
+
+  <footer class="pfoot"><span>Checked on your device. Nothing is uploaded or saved.</span><span id="ver"></span></footer>
+  <script src="js/sites.js"></script>
   <script src="js/render.js"></script>
   <script src="js/popup.js"></script>
 </body>

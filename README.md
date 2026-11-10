@@ -13,7 +13,7 @@ Team Catalysts: Esan Toluwani, Osamwengumwenro Oni-Ojo, Yin-Chih Lan, Olayiwola 
 | **Original page** | `web/index.html`, `dist/campusguard.html` | The first two-column layout with a 10-step "How it works" animation. Still served by the API |
 | **Real campus data tools** | `scripts/anonymize_campus.py`, `scripts/evaluate_real_campus.py` | Anonymise real AAMU emails on the machine that holds them (names, addresses, phone and ID numbers replaced), then test CampusGuard on them. Real mail is used only for testing and is git-ignored |
 | **Sender check** | Results, walkthrough, extension report, API (`sender_check`) | Shows how the From line was judged: the address split into name / mailbox / real owner, each rule as a Yes/No question with the reason, a bar showing the content score, the band the sender is allowed to move it within, and where it landed, plus the exact formula (e.g. `54% + 0.20 × (100% − 54%) = 63%`) |
-| **Browser extension** | `extension/`, `dist/campusguard-extension-*.zip` | Gmail & Outlook web: a verdict card above every opened email. Also a popup paste-checker, a right-click "Check selected text / this link", and a full report page. Chrome, Edge, Brave and Firefox |
+| **Browser extension (v3)** | `extension/`, `dist/campusguard-extension-*.zip`, [`extension/INSTALL.md`](extension/INSTALL.md) | Lives in the browser toolbar. Works on any webmail: Gmail, Outlook, iCloud, Yahoo, AOL, Proton and others are recognised by name, and any other site is checked when you click the icon. **Asks before reading a site**, then checks each email you open and shows the verdict on the icon (badge colour + hover text); click for the full breakdown. Reads only the open email. Settings: auto-check on/off, an optional card inside the email, and the list of allowed sites. Also a paste checker and a full report page. Chrome, Edge and Brave (Safari possible on a Mac) |
 | **API server** | `server/app.py`, `Dockerfile` | FastAPI: `POST /api/analyze`, `GET /api/health`, optional `POST /api/explain` (LLM rewrite of the flags), and it hosts the web app. No database, no body logging, rate limited, security headers |
 | **Models** | `campusguard/`, `models/` | Message model (logistic regression + 23 red-flag detectors) and link model (gradient-boosted trees). Python reference plus an identical JavaScript port |
 
@@ -34,6 +34,7 @@ export ANTHROPIC_API_KEY=...                # adds an "Explain like a friend (AI
 
 # 3) Extension
 #   Chrome/Edge/Brave: unzip dist/campusguard-extension-chromium.zip -> chrome://extensions -> Developer mode -> Load unpacked
+#   (step-by-step, incl. Safari: extension/INSTALL.md)
 #   Firefox: about:debugging -> This Firefox -> Load Temporary Add-on -> pick manifest.json from the firefox zip
 
 # 4) Deploy with HTTPS: push the Dockerfile to Render / Railway / Fly.io (they terminate TLS)
