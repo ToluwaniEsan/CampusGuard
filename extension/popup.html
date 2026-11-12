@@ -3,37 +3,30 @@
 <head><meta charset="utf-8"><title>CampusGuard</title><link rel="stylesheet" href="css/ext.css"><link rel="stylesheet" href="css/popup.css"></head>
 <body>
   <header class="phead">
-    <div class="brand"><img src="icons/icon48.png" alt=""><div><b>CampusGuard</b><small>Detect. Explain. Stay safe.</small></div></div>
-    <span class="site" id="site" hidden></span>
+    <button class="icon-btn" id="back" aria-label="Back" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <div class="brand"><img src="icons/icon32.png" alt=""><b>CampusGuard</b></div>
+    <button class="icon-btn" id="gear" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
   </header>
-  <nav class="tabs" role="tablist" aria-label="CampusGuard">
-    <button role="tab" id="t-email" aria-controls="p-email" aria-selected="true">This email</button>
-    <button role="tab" id="t-paste" aria-controls="p-paste" aria-selected="false" tabindex="-1">Paste a message</button>
-    <button role="tab" id="t-settings" aria-controls="p-settings" aria-selected="false" tabindex="-1">Settings</button>
-  </nav>
 
-  <section role="tabpanel" id="p-email" aria-labelledby="t-email" class="panel">
-    <div id="email-out" aria-live="polite"><p class="muted">Looking for an open email…</p></div>
+  <main id="v-main" aria-live="polite"><p class="muted pad">Looking for an open email…</p></main>
+
+  <section id="v-paste" class="pad stack" hidden>
+    <label class="lbl" for="text">Paste a message or link to check</label>
+    <textarea id="text" rows="4" placeholder="Paste an email, text, DM or link…"></textarea>
+    <input id="sender" placeholder="From (optional)" aria-label="From (optional)">
+    <button class="btn primary" id="check">Check it</button>
+    <div id="paste-out"></div>
   </section>
 
-  <section role="tabpanel" id="p-paste" aria-labelledby="t-paste" class="panel" hidden>
-    <div class="field"><label for="sender">From (optional)</label><input id="sender" placeholder="Name &lt;address@example.com&gt;"></div>
-    <div class="field"><label for="text">Paste a message or link</label><textarea id="text" placeholder="Paste an email, text, DM or link…"></textarea></div>
-    <div class="row"><button class="btn primary" id="check">Check it</button><button class="btn" id="full" hidden>Full analysis</button></div>
-    <div id="out" class="stack" aria-live="polite"></div>
-  </section>
-
-  <section role="tabpanel" id="p-settings" aria-labelledby="t-settings" class="panel" hidden>
-    <h3 class="sh">Checking</h3>
-    <label class="opt"><span><b>Check each email when I open it</b><small>Off: click CampusGuard to check the open email.</small></span><input type="checkbox" role="switch" id="s-auto"></label>
-    <label class="opt"><span><b>Show a card inside the email</b><small>Adds a small CampusGuard card above the open email. Off by default.</small></span><input type="checkbox" role="switch" id="s-card"></label>
-    <h3 class="sh">Email sites you allowed</h3>
+  <section id="v-settings" class="pad stack" hidden>
+    <label class="opt"><span><b>Check each email I open</b><small>Off: click CampusGuard to check.</small></span><input type="checkbox" role="switch" id="s-auto"></label>
+    <label class="opt"><span><b>Pop up when an email looks like a scam</b><small>Drops down from the CampusGuard icon.</small></span><input type="checkbox" role="switch" id="s-alert"></label>
+    <div class="lbl">Email sites you allowed</div>
     <div id="s-sites" class="stack"></div>
-    <h3 class="sh">Privacy</h3>
-    <p class="muted" style="margin:0">CampusGuard reads only the email that is open, and only on sites you allow. It runs on this device, makes no network requests and saves no email text. Results disappear when you close the tab.</p>
+    <p class="muted">Reads only the open email, only on sites you allow. Runs on this device; nothing is sent or saved.</p>
   </section>
 
-  <footer class="pfoot"><span>Checked on your device. Nothing is uploaded or saved.</span><span id="ver"></span></footer>
+  <footer class="pfoot"><button class="linkbtn" id="other">Check something else</button><span id="ver"></span></footer>
   <script src="js/sites.js"></script>
   <script src="js/render.js"></script>
   <script src="js/popup.js"></script>

@@ -1,41 +1,69 @@
-/* CampusGuard v3 toolbar drop-down: "This email", "Paste a message" and "Settings". */
+/* CampusGuard v3.1 toolbar drop-down.
+   One compact card: colour, verdict, score and the top reasons. The long report opens in its own tab.
+   Pasting is hidden behind "Check something else"; settings behind the gear. */
 (function () {
   "use strict";
   const $ = s => document.querySelector(s);
   const S = CGSites, R = CGRender, esc = R.esc;
-  const DEFAULTS = { autoCheck: true, inPageCard: false, sites: {} };
+  const DEFAULTS = { autoCheck: true, popAlert: true, sites: {} };
   const READER = ["js/mail-reader.js", "js/mail-watch.js"];
-  let tab = null, url = "", origin = null, host = "", lastEmail = null, lastPaste = null;
+  const HEAD = { high: "Don't click, reply or pay.", medium: "Be careful with this one.", low: "Nothing worrying found." };
+  const SKIP = new Set(["suspicious_wording"]);
+  let tab = null, url = "", origin = null, host = "", lastEmail = null, lastPaste = null, autoOpened = false;
 
   $("#ver").textContent = "v" + chrome.runtime.getManifest().version;
   const getSettings = () => chrome.storage.local.get(DEFAULTS).then(v => Object.assign({}, DEFAULTS, v));
   const send = msg => new Promise(res => chrome.runtime.sendMessage(msg, r => { void chrome.runtime.lastError; res(r); }));
+  const on = (sel, fn) => { const el = $(sel); if (el) el.addEventListener("click", fn); };
+  const main = html => { $("#v-main").innerHTML = html; };
 
-  // ------------------------------------------------------------------ tabs (keyboard: arrows, Home, End)
-  const TABS = ["email", "paste", "settings"];
-  function select(name, focus) {
-    for (const t of TABS) {
-      const on = t === name, b = $("#t-" + t);
-      b.setAttribute("aria-selected", on); b.tabIndex = on ? 0 : -1; $("#p-" + t).hidden = !on;
-      if (on && focus) b.focus();
-    }
+  // ------------------------------------------------------------------ views: main / paste / settings
+  function view(name) {
+    $("#v-main").hidden = name !== "main"; $("#v-paste").hidden = name !== "paste"; $("#v-settings").hidden = name !== "settings";
+    $("#back").hidden = name === "main"; $("#gear").hidden = name === "settings"; $("#other").hidden = name !== "main";
     if (name === "settings") drawSettings();
     if (name === "paste") $("#text").focus();
+    stopFade();
   }
-  TABS.forEach((t, i) => {
-    const b = $("#t-" + t);
-    b.addEventListener("click", () => select(t));
-    b.addEventListener("keydown", e => {
-      const k = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: TABS.length - 1 }[e.key];
-      if (k === undefined) return;
-      e.preventDefault(); select(TABS[(k + TABS.length) % TABS.length], true);
-    });
-  });
+  on("#gear", () => view("settings"));
+  on("#back", () => view("main"));
+  on("#other", () => view("paste"));
 
-  // ------------------------------------------------------------------ "This email"
-  const out = html => { $("#email-out").innerHTML = html; };
-  const on = (sel, fn) => { const el = $(sel); if (el) el.addEventListener("click", fn); };
+  // ------------------------------------------------------------------ the compact result card
+  const RANK = { High: 0, Medium: 1, Low: 2 };
+  const topFlags = r => (r.red_flags || []).filter(f => !SKIP.has(f.flag)).map((f, i) => [f, i])
+    .sort((a, b) => (RANK[a[0].severity] - RANK[b[0].severity]) || (a[1] - b[1])).slice(0, 3).map(x => x[0]);
+  function card(r, sender) {
+    const lvl = r.risk_level;
+    let items;
+    if (lvl === "low") items = (r.good_signs || []).filter(g => g.indexOf("Reads like") !== 0).slice(0, 2).map(g => ({ label: g }));
+    else {
+      const seen = new Set();
+      items = topFlags(r).map(f => { const ev = (f.evidence || []).find(e => !seen.has(e)); if (ev) seen.add(ev); return { label: f.label, ev }; });
+    }
+    return '<div class="lvl-' + lvl + '"><div class="res" role="status"><div class="top"><div class="vt"><b>' + esc(r.verdict) + "</b><span>" + HEAD[lvl] + "</span></div>" +
+      '<div class="num" title="How closely this matches known scams. It ranks risk; it is not a probability."><b>' + R.pct(r.risk_score) + "</b><small>risk / 100</small></div></div></div>" +
+      (autoOpened && lvl === "medium" ? '<div class="fade" id="fadebar"></div>' : "") +
+      (items.length ? '<div class="why"><h3>' + (lvl === "low" ? "Why it looks fine" : "Why") + "</h3><ul>" +
+        items.map(i => "<li><span>" + esc(i.label) + (i.ev ? "<small>“" + esc(i.ev) + "”</small>" : "") + "</span></li>").join("") + "</ul></div>" : "") +
+      (sender ? '<div class="from" title="' + esc(sender) + '">From: ' + esc(sender) + "</div>" : "") +
+      '<div class="acts"><button class="btn primary small" data-full>See full breakdown</button>' + (lvl !== "low" ? '<button class="linkbtn" data-report>How to report it</button>' : "") + "</div>" +
+      '<div class="tip" data-tip hidden></div></div>';
+  }
+  function wireCard(scope, payload) {
+    scope.querySelector("[data-full]").addEventListener("click", () => send({ type: "cg-open-report", payload }));
+    const rep = scope.querySelector("[data-report]");
+    if (rep) rep.addEventListener("click", () => { const t = scope.querySelector("[data-tip]"); t.hidden = false; t.textContent = S.reportTip(payload.url || url); });
+  }
 
+  // Suspicious alerts that popped up on their own fade after 8 seconds, unless the user is using the popup.
+  let fadeTimer = null;
+  function startFade() { fadeTimer = setTimeout(() => window.close(), 8000); }
+  function stopFade() { clearTimeout(fadeTimer); const b = $("#fadebar"); if (b) b.remove(); }
+  document.addEventListener("pointerdown", stopFade);
+  document.addEventListener("keydown", stopFade);
+
+  // ------------------------------------------------------------------ what's on the current tab
   async function isAllowed() {
     if (!origin) return false;
     const s = await getSettings();
@@ -46,59 +74,55 @@
   async function start() {
     const params = new URLSearchParams(location.search);       // ?tab=ID is used by the automated tests
     tab = params.get("tab") ? await chrome.tabs.get(Number(params.get("tab"))) : (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
+    try {
+      const a = (await chrome.storage.session.get("cgAuto")).cgAuto;
+      if (a && tab && a.tabId === tab.id && Date.now() - a.at < 5000) autoOpened = true;
+      await chrome.storage.session.remove("cgAuto");
+    } catch (e) { /* older browsers */ }
     url = (tab && tab.url) || "";
     origin = S.originOf(url);
     if (!origin) { notWeb(); return; }
     host = new URL(url).hostname;
-    $("#site").hidden = false; $("#site").textContent = host; $("#site").title = host;
     const s = await getSettings();
-    if (await isAllowed()) {
-      if (s.sites[origin].enabled === false) turnedOff(); else checkAllowed();
-    } else if (S.known(url)) consent();
+    if (await isAllowed()) { if (s.sites[origin].enabled === false) turnedOff(); else checkAllowed(); }
+    else if (S.known(url)) consent();
     else checkOnce(true);
   }
 
-  function notWeb() {
-    out('<div class="card"><h2>Open your email in this tab</h2><p>CampusGuard checks the email you have open on a webmail site. You can also paste any message.</p>' +
-      '<div class="row"><button class="btn primary small" id="go-paste">Paste a message</button></div></div>');
-    on("#go-paste", () => select("paste"));
+  function note(title, text, buttons) {
+    main('<div class="note"><h2>' + title + "</h2><p>" + text + "</p>" + (buttons ? '<div class="row">' + buttons + "</div>" : "") + "</div>");
   }
+  function notWeb() { note("Open your email in this tab", "CampusGuard checks the email you have open. To check something else, use the link below."); }
 
-  function consent(note) {
-    const name = S.siteName(url);
-    out('<div class="card"><h2>Check emails on ' + esc(name) + '?</h2>' +
-      "<p>When you open an email, CampusGuard reads <b>only that email</b> (sender, subject, text and where its links go), checks it on this device and shows the result on its icon. Nothing is saved or sent.</p>" +
-      (note ? '<p role="alert"><b>' + esc(note) + "</b></p>" : "") +
-      '<div class="row"><button class="btn primary" id="allow">Allow on ' + esc(host) + '</button><button class="btn" id="once">Check just this email</button></div>' +
-      '<p class="muted">Your browser will ask you to confirm. You can turn it off any time in Settings.</p></div>');
-    on("#allow", allow);
-    on("#once", () => checkOnce(false));
+  function consent(msg) {
+    note("Check emails on " + esc(S.siteName(url)) + "?",
+      "CampusGuard reads <b>only the email you open</b>, checks it on this device and saves nothing." + (msg ? "<br><b>" + esc(msg) + "</b>" : ""),
+      '<button class="btn primary small" id="allow">Allow on ' + esc(host) + '</button><button class="btn small" id="once">Just this email</button>');
+    on("#allow", allow); on("#once", () => checkOnce(false));
   }
 
   function turnedOff() {
-    out('<div class="card"><h2>CampusGuard is off for ' + esc(host) + '</h2><p>Turn it back on to check emails here.</p>' +
-      '<div class="row"><button class="btn primary small" id="turn-on">Turn it on</button></div></div>');
+    note("Off for " + esc(host), "Turn it back on to check emails here.", '<button class="btn primary small" id="turn-on">Turn it on</button>');
     on("#turn-on", async () => {
       const s = await getSettings(); s.sites[origin] = { enabled: true };
-      await chrome.storage.local.set({ sites: s.sites }); out('<p class="muted">Checking…</p>'); setTimeout(checkAllowed, 700);
+      await chrome.storage.local.set({ sites: s.sites }); main('<p class="muted pad">Checking…</p>'); setTimeout(checkAllowed, 700);
     });
   }
 
   async function allow() {
-    // must be the first thing in the click handler: browsers only show the prompt for a direct click
-    let ok = false;
+    let ok = false;   // must come first in the click handler, or the browser won't show its prompt
     try { ok = await chrome.permissions.request({ origins: [S.pattern(origin)] }); } catch (e) { ok = false; }
     if (!ok) { consent("Not allowed. You can still check just this email."); return; }
     const s = await getSettings(); s.sites[origin] = { enabled: true };
     await chrome.storage.local.set({ sites: s.sites });
-    out('<p class="muted">Allowed. Checking the open email…</p>');
+    main('<p class="muted pad">Allowed. Checking the open email…</p>');
     setTimeout(checkAllowed, 700);
   }
 
   async function readFromTab() {
     const ask = () => new Promise(res => chrome.tabs.sendMessage(tab.id, { type: "cg-get-email" }, r => { void chrome.runtime.lastError; res(r || null); }));
     let r = await ask();
-    if (!r) {                                     // tab was open before access was given: start the reader now
+    if (!r) {
       try { await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: READER }); } catch (e) { return null; }
       await new Promise(x => setTimeout(x, 250));
       r = await ask();
@@ -109,90 +133,71 @@
   async function checkAllowed() {
     const r = await readFromTab();
     const s = await getSettings();
-    if (!r) { out('<div class="card"><h2>Couldn\'t read this page</h2><p>Reload the page and click CampusGuard again.</p></div>'); return; }
-    if (!r.email) {
-      out('<div class="card"><h2>No email is open</h2><p>' + (s.autoCheck ? "Open an email and CampusGuard checks it automatically. The result shows on the icon." : "Open an email, then click CampusGuard to check it.") + "</p></div>");
-      return;
-    }
+    if (!r) { note("Couldn't read this page", "Reload the page and click CampusGuard again."); return; }
+    if (!r.email) { note("No email open", s.autoCheck ? "Open an email and CampusGuard checks it. The icon shows the result." : "Open an email, then click CampusGuard."); return; }
     await showEmail(r.email, false);
   }
 
   async function checkOnce(unknownSite) {
-    // one-time access from the click (activeTab): read the open email once, keep nothing
-    out('<p class="muted">Looking for an open email…</p>');
+    main('<p class="muted pad">Looking for an open email…</p>');
     let r = null;
     try {
       await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["js/mail-reader.js"] });
       const [res] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: () => CGMailReader.readPlain(document, location) });
       r = res && res.result;
     } catch (e) { r = null; }
-    if (!r) { out('<div class="card"><h2>CampusGuard can\'t read this page</h2><p>Browsers don\'t let extensions read some pages (like settings or store pages). Paste the message instead.</p><div class="row"><button class="btn primary small" id="go-paste">Paste a message</button></div></div>'); on("#go-paste", () => select("paste")); return; }
-    if (!r.isMailPage) {
-      out('<div class="card"><h2>This doesn\'t look like an email</h2><p>CampusGuard only reads email pages. To check something else, paste it.</p><div class="row"><button class="btn primary small" id="go-paste">Paste a message</button></div></div>');
-      on("#go-paste", () => select("paste"));
-      return;
-    }
-    if (!r.email) {
-      out('<div class="card"><h2>No email is open</h2><p>This looks like an email site. Open an email and click CampusGuard again.</p></div>' + (unknownSite ? alwaysAsk() : ""));
-      wireAlways();
-      return;
-    }
+    if (!r) { note("Can't read this page", "Browsers don't let extensions read some pages. Use “Check something else” to paste it."); return; }
+    if (!r.isMailPage) { note("This doesn't look like an email", "CampusGuard only reads email pages. Use “Check something else” to paste a message."); return; }
+    if (!r.email) { note("No email open", "Open an email and click CampusGuard again."); if (unknownSite) addAsk(); return; }
     await showEmail(r.email, unknownSite);
   }
 
-  function alwaysAsk() {
-    return '<div class="ask" id="always"><p><b>Always check emails on ' + esc(host) + "?</b> CampusGuard will check each email you open here, reading only that email.</p>" +
-      '<div class="row"><button class="btn primary small" id="always-yes">Yes, always</button><button class="btn small" id="always-no">No thanks</button></div></div>';
-  }
-  function wireAlways() {
-    on("#always-yes", allow);
-    on("#always-no", () => { const a = $("#always"); if (a) a.remove(); });
+  function addAsk() {
+    $("#v-main").insertAdjacentHTML("beforeend", '<div class="ask" id="always"><b>Always check emails on ' + esc(host) + '?</b><div class="row"><button class="btn primary small" id="always-yes">Yes, always</button><button class="btn small" id="always-no">No thanks</button></div></div>');
+    on("#always-yes", allow); on("#always-no", () => $("#always").remove());
   }
 
   async function showEmail(email, offerAlways) {
     const res = await send({ type: "cg-analyze", text: (email.subject ? email.subject + "\n" : "") + email.text, sender: email.sender });
-    if (!res || !res.ok) { out('<div class="card"><h2>Something went wrong</h2><p>Try again.</p></div>'); return; }
+    if (!res || !res.ok) { note("Something went wrong", "Try again."); return; }
     const r = res.result;
     lastEmail = { result: r, text: email.text, sender: email.sender, url };
     send({ type: "cg-show-result", tabId: tab.id, result: r });
-    out('<div class="meta">' + (email.sender ? "<span><b>From:</b> " + esc(email.sender) + "</span>" : "") + (email.subject ? "<span><b>Subject:</b> " + esc(email.subject) + "</span>" : "") + "</div>" +
-      R.verdict(r) + (offerAlways ? alwaysAsk() : "") + R.flags(r, 4) + R.good(r) +
-      '<div class="row"><button class="btn primary small" id="e-full">View full analysis</button>' + (r.risk_level !== "low" ? '<button class="btn small" id="e-report">How to report it</button>' : "") + "</div>" +
-      '<div class="todo" id="e-tip" hidden></div>');
-    on("#e-full", () => send({ type: "cg-open-report", payload: lastEmail }));
-    on("#e-report", () => { const t = $("#e-tip"); t.hidden = false; t.textContent = S.reportTip(url); });
-    wireAlways();
+    main(card(r, email.sender));
+    wireCard($("#v-main"), lastEmail);
+    if (offerAlways) addAsk();
+    if (autoOpened && r.risk_level === "medium") startFade();
   }
 
-  // ------------------------------------------------------------------ "Paste a message"
+  // ------------------------------------------------------------------ "Check something else"
   async function check() {
     const text = $("#text").value, sender = $("#sender").value;
-    if (!text.trim()) { $("#out").innerHTML = '<div class="muted">Paste something first.</div>'; return; }
+    if (!text.trim()) { $("#paste-out").innerHTML = '<p class="muted">Paste something first.</p>'; return; }
     const res = await send({ type: "cg-analyze", text, sender });
-    if (!res || !res.ok) { $("#out").innerHTML = '<div class="muted">Could not check that. Try again.</div>'; return; }
+    if (!res || !res.ok) { $("#paste-out").innerHTML = '<p class="muted">Could not check that. Try again.</p>'; return; }
     lastPaste = { text, sender, result: res.result };
-    $("#out").innerHTML = R.verdict(res.result) + R.flags(res.result, 4) + R.good(res.result);
-    $("#full").hidden = false;
+    $("#text").rows = 2;
+    $("#paste-out").innerHTML = card(res.result, "");
+    wireCard($("#paste-out"), lastPaste);
   }
-  $("#check").addEventListener("click", check);
+  on("#check", check);
   $("#text").addEventListener("keydown", e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) check(); });
-  $("#full").addEventListener("click", () => lastPaste && send({ type: "cg-open-report", payload: lastPaste }));
 
-  // ------------------------------------------------------------------ "Settings"
+  // ------------------------------------------------------------------ settings
   async function drawSettings() {
     const s = await getSettings();
-    $("#s-auto").checked = s.autoCheck; $("#s-card").checked = s.inPageCard;
+    $("#s-auto").checked = s.autoCheck; $("#s-alert").checked = s.popAlert;
     const rows = [];
     for (const o of Object.keys(s.sites).sort()) {
       let granted = false;
       try { granted = await chrome.permissions.contains({ origins: [S.pattern(o)] }); } catch (e) { granted = false; }
       if (!granted) continue;
-      const h = new URL(o).hostname, k = S.known(o + "/" + (h === "www.icloud.com" ? "mail" : ""));
-      rows.push('<div class="siterow"><div class="grow"><b>' + esc(h) + "</b><small>" + esc(k ? k.name : "Email site") + "</small></div>" +
+      const h = new URL(o).hostname;
+      rows.push('<div class="siterow"><div class="grow">' + esc(h) + "</div>" +
         '<input type="checkbox" role="switch" data-site="' + esc(o) + '" aria-label="Check emails on ' + esc(h) + '"' + (s.sites[o].enabled !== false ? " checked" : "") + ">" +
-        '<button class="btn small" data-remove="' + esc(o) + '" aria-label="Remove ' + esc(h) + '">Remove</button></div>');
+        '<button class="linkbtn" data-remove="' + esc(o) + '" aria-label="Remove ' + esc(h) + '">Remove</button></div>');
     }
-    $("#s-sites").innerHTML = rows.length ? rows.join("") : '<p class="muted" style="margin:0">No sites yet. Open your webmail, click CampusGuard and choose Allow.</p>';
+    $("#s-sites").innerHTML = rows.length ? rows.join("") : '<p class="muted">None yet. Open your webmail, click CampusGuard and choose Allow.</p>';
     $("#s-sites").querySelectorAll("[data-site]").forEach(el => el.addEventListener("change", async () => {
       const v = await getSettings(); v.sites[el.dataset.site] = { enabled: el.checked }; await chrome.storage.local.set({ sites: v.sites });
     }));
@@ -204,7 +209,8 @@
     }));
   }
   $("#s-auto").addEventListener("change", e => chrome.storage.local.set({ autoCheck: e.target.checked }));
-  $("#s-card").addEventListener("change", e => chrome.storage.local.set({ inPageCard: e.target.checked }));
+  $("#s-alert").addEventListener("change", e => chrome.storage.local.set({ popAlert: e.target.checked }));
 
+  view("main");
   start();
 })();

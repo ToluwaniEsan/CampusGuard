@@ -1,4 +1,4 @@
-# Installing the CampusGuard extension (v3)
+# Installing the CampusGuard extension (v3.1)
 
 CampusGuard isn't in any extension store. You load it by hand ("unpacked"). It takes about two minutes.
 
@@ -29,11 +29,11 @@ To update after a new version: replace the folder's contents, then click the rel
    | green **OK** | Looks fine |
    | nothing | No email open, or the site isn't allowed |
 
-   Hover for the verdict and score; click for the full breakdown.
+   When an email looks like a scam, the CampusGuard drop-down opens by itself from the icon: colour, score and why. High Risk stays until you click away; Suspicious fades after 8 seconds. Safe emails just get the green OK. Click the icon any time to see the result, and **See full breakdown** for the long report.
 
 On a site CampusGuard doesn't know by name, click the shield while an email is open. If it finds one, it checks it and asks **Always check emails on this site?**
 
-**Settings** (in the drop-down): turn automatic checking off (then you click to check), turn on the optional card inside the email, and switch off or remove any allowed site.
+**Settings** (the gear in the drop-down): turn automatic checking off (then you click to check), turn the scam pop-up off, and switch off or remove any allowed site. To check a message from somewhere else, click **Check something else** at the bottom of the drop-down and paste it.
 
 ## What it reads
 

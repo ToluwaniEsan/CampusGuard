@@ -5,7 +5,9 @@ Checks:
   * "Check just this email" works once without allowing the site
   * after "Allow", each opened email is checked automatically and the toolbar badge shows the result
   * switching emails updates the badge; with no email open the badge is cleared
-  * the optional in-page card appears only when turned on in Settings
+  * opening a scam email drops the CampusGuard popup down from the icon by itself (once per email);
+    safe emails do not; a tab in the background gets the small backup alert on the page instead
+  * the popup is one compact card that fits without scrolling
   * turning a site off stops the checks; removing it removes it from Settings
   * an unknown webmail is recognised on click and offers "Always check emails on this site?"
   * pages that are not email (a news article, a blog with Reply buttons) are not read
@@ -72,7 +74,17 @@ async def main():
         async def badge(tid):
             return await sw.evaluate("id => chrome.action.getBadgeText({tabId: id})", tid)
 
-        async def popup(tid, size=(380, 600)):
+        async def popups():
+            return await sw.evaluate("chrome.runtime.getContexts({contextTypes: ['POPUP']}).then(c => c.length)")
+
+        async def popup_height():
+            pg = await popup(gid)
+            h = await pg.evaluate("document.body.scrollHeight")
+            await pg.screenshot(path=str(OUT / "2b-compact-card.png"), clip={"x": 0, "y": 0, "width": 340, "height": h})
+            await pg.close()
+            return h
+
+        async def popup(tid, size=(340, 600)):
             pg = await ctx.new_page(); pg.on("pageerror", lambda e: errs.append(str(e)))
             await pg.set_viewport_size({"width": size[0], "height": size[1]})
             await pg.goto(f"chrome-extension://{ext_id}/popup.html?tab={tid}")
@@ -90,10 +102,10 @@ async def main():
         gid = await tab_id("https://mail.google.com/")
         check("not allowed: no badge, nothing read", await badge(gid) == "" and await g.locator(".cg-holder").count() == 0)
         pop = await popup(gid)
-        check("not allowed: asks first", "Check emails on Gmail?" in await pop.inner_text("#email-out"))
+        check("not allowed: asks first", "Check emails on Gmail?" in await pop.inner_text("#v-main"))
         await pop.screenshot(path=str(OUT / "1-consent.png"))
         await pop.click("#once"); await pop.wait_for_timeout(700)
-        check("check just this email (once)", await pop.inner_text(".badge") == "High Risk", await pop.inner_text(".badge"))
+        check("check just this email (once)", await pop.inner_text(".res .vt b") == "High Risk", await pop.inner_text(".res .vt b"))
         await pop.screenshot(path=str(OUT / "2-once-result.png"), full_page=True)
         st = await sw.evaluate("chrome.storage.local.get(null)")
         check("once: site not added", "https://mail.google.com" not in st.get("sites", {}))
@@ -102,7 +114,7 @@ async def main():
         # ---------------------------------------------------------- allow Gmail
         pop = await popup(gid)
         await pop.click("#allow"); await pop.wait_for_timeout(1500)
-        check("after Allow: result in drop-down", (await pop.locator(".badge").count()) and await pop.inner_text(".badge") == "High Risk")
+        check("after Allow: result in drop-down", (await pop.locator(".res").count()) and await pop.inner_text(".res .vt b") == "High Risk")
         await pop.close()
         await g.reload(); await g.wait_for_timeout(1500)
         check("auto-check: badge shows high", await badge(gid) == "!", await badge(gid))
@@ -116,16 +128,28 @@ async def main():
 
         # ---------------------------------------------------------- settings: in-page card, auto-check, site switch
         pop = await popup(gid)
-        await pop.click("#t-settings"); await pop.wait_for_timeout(300)
+        await pop.click("#gear"); await pop.wait_for_timeout(300)
         check("settings lists Gmail", "mail.google.com" in await pop.inner_text("#s-sites"))
-        await pop.click("label.opt:has(#s-card)"); await pop.wait_for_timeout(300)
-        await pop.screenshot(path=str(OUT / "3-settings.png"), full_page=True)
-        await g.evaluate("location.hash = '#inbox/phish'"); await g.wait_for_timeout(1600)
-        card = await g.evaluate("(() => { const h = document.querySelector('.cg-holder'); return h ? h.shadowRoot.querySelector('.pill').textContent : null; })()")
-        check("in-page card when turned on", card == "High Risk", str(card))
-        await g.screenshot(path=str(OUT / "4-gmail-card.png"))
-        await pop.click("label.opt:has(#s-card)"); await pop.wait_for_timeout(800)
-        check("card removed when turned off", await g.locator(".cg-holder").count() == 0)
+        await pop.screenshot(path=str(OUT / "3-settings.png"))
+        check("settings fits without scrolling", await pop.evaluate("document.body.scrollHeight <= 600"))
+        await pop.close()
+        # opening a scam email drops the popup down by itself; a safe one doesn't
+        await g.bring_to_front()
+        await g.evaluate("location.hash = '#inbox/phish'"); await g.wait_for_timeout(1800)
+        check("scam email: popup opened by itself", await popups() == 1, str(await popups()))
+        check("popup fits without scrolling", await popup_height() <= 600, str(await popup_height()))
+        await g.evaluate("location.hash = '#inbox/legit'"); await g.wait_for_timeout(1500)
+        check("safe email: no popup", await popups() == 0, str(await popups()))
+        # a scam opened in a background tab gets the backup alert on the page
+        g2 = await open_page("https://mail.google.com/mail/u/0/#inbox")
+        await g.bring_to_front()
+        await g2.evaluate("location.hash = '#inbox/phish'"); await g2.wait_for_timeout(1800)
+        alert = await g2.evaluate("(() => { const h = document.querySelector('.cg-holder'); return h ? h.shadowRoot.querySelector('.vt b').textContent : null; })()")
+        check("background tab: backup alert on the page", alert == "High Risk", str(alert))
+        await g2.screenshot(path=str(OUT / "4-backup-alert.png"))
+        await g2.close()
+        pop = await popup(gid)
+        await pop.click("#gear"); await pop.wait_for_timeout(300)
         await pop.click("#s-sites [data-site]"); await pop.wait_for_timeout(1200)
         await g.evaluate("location.hash = '#inbox/legit'"); await g.wait_for_timeout(1500)
         check("site switched off: no check", await badge(gid) == "", await badge(gid))
@@ -139,7 +163,7 @@ async def main():
         oid = await tab_id("https://outlook.live.com/")
         pop = await popup(oid)
         await pop.click("#allow"); await pop.wait_for_timeout(1500)
-        check("Outlook: gift-card scam flagged", await pop.inner_text(".badge") == "High Risk")
+        check("Outlook: gift-card scam flagged", await pop.inner_text(".res .vt b") == "High Risk")
         await pop.screenshot(path=str(OUT / "5-outlook.png"), full_page=True)
         await pop.close()
         await o.wait_for_timeout(1200)
@@ -149,8 +173,8 @@ async def main():
         w = await open_page("https://webmail.campusmail.test/?_task=mail&_uid=12")
         wid = await tab_id("https://webmail.campusmail.test/")
         pop = await popup(wid)
-        txt = await pop.inner_text("#email-out")
-        check("unknown webmail recognised on click", (await pop.locator(".badge").count()) and await pop.inner_text(".badge") == "High Risk", txt[:80])
+        txt = await pop.inner_text("#v-main")
+        check("unknown webmail recognised on click", (await pop.locator(".res").count()) and await pop.inner_text(".res .vt b") == "High Risk", txt[:80])
         check("offers Always check this site", "Always check emails on webmail.campusmail.test?" in txt)
         check("generic reader found sender", "micros0ft-office365.com" in txt)
         await pop.screenshot(path=str(OUT / "6-unknown-webmail.png"), full_page=True)
@@ -163,14 +187,14 @@ async def main():
         for url, label in (("https://news.example.test/2026/park", "news article"), ("https://blog.example.test/study-tips", "blog with Reply buttons")):
             n = await open_page(url)
             pop = await popup(await tab_id(url.split("/2026")[0].split("/study")[0] + "/"))
-            check(f"not email: {label}", "doesn't look like an email" in await pop.inner_text("#email-out"))
+            check(f"not email: {label}", "doesn't look like an email" in await pop.inner_text("#v-main"))
             if label == "news article":
                 await pop.screenshot(path=str(OUT / "7-not-email.png"), full_page=True)
             await pop.close(); await n.close()
 
         # ---------------------------------------------------------- remove a site
         pop = await popup(gid)
-        await pop.click("#t-settings"); await pop.wait_for_timeout(300)
+        await pop.click("#gear"); await pop.wait_for_timeout(300)
         await pop.click('[data-remove="https://mail.google.com"]'); await pop.wait_for_timeout(800)
         check("remove site", "mail.google.com" not in await pop.inner_text("#s-sites"))
         reg = await sw.evaluate("chrome.scripting.getRegisteredContentScripts().then(r => r.map(x => x.matches))")
@@ -179,11 +203,11 @@ async def main():
 
         # ---------------------------------------------------------- paste tab and report page
         pop = await popup(gid)
-        await pop.click("#t-paste")
+        await pop.click("#other")
         await pop.fill("#text", "Hey it's Jay, I got locked out and they sent the 6 digit code to your number by mistake. Can you text it to me real quick?")
         await pop.click("#check"); await pop.wait_for_timeout(500)
-        check("paste tab works", await pop.inner_text("#out .badge") == "High Risk")
-        await pop.click("#full"); await pop.wait_for_timeout(1200)
+        check("paste tab works", await pop.inner_text("#paste-out .res .vt b") == "High Risk")
+        await pop.click("#paste-out [data-full]"); await pop.wait_for_timeout(1200)
         rp = [x for x in ctx.pages if "report.html" in x.url]
         check("full report opens", rp and await rp[0].locator(".flag").count() > 0)
 

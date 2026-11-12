@@ -6,7 +6,7 @@
 if (typeof importScripts === "function" && !self.CampusGuardEngine) importScripts("model/campusguard-model.js", "js/campusguard-engine.js", "js/sites.js");
 const engine = self.CampusGuardEngine.create(self.CG_MODEL);
 const S = self.CGSites;
-const DEFAULTS = { autoCheck: true, inPageCard: false, sites: {} };
+const DEFAULTS = { autoCheck: true, popAlert: true, sites: {} };
 const READER = ["js/mail-reader.js", "js/mail-watch.js"];
 const BADGE = {
   high: { text: "!", color: "#b81f3b" },
@@ -90,7 +90,7 @@ async function injectOpenTabs(origin) {
 chrome.runtime.onInstalled.addListener(async () => {
   const s = await chrome.storage.local.get(null);
   await chrome.storage.local.set(Object.assign({}, DEFAULTS, s));
-  try { await chrome.storage.sync.remove("autoScan"); } catch (e) { /* v2 setting, no longer used */ }
+  try { await chrome.storage.sync.remove("autoScan"); await chrome.storage.local.remove("inPageCard"); } catch (e) { /* older settings, no longer used */ }
   sync();
 });
 chrome.runtime.onStartup.addListener(() => sync());
@@ -122,7 +122,13 @@ function showResult(tabId, r) {
   chrome.action.setBadgeBackgroundColor({ tabId, color: b.color });
   if (chrome.action.setBadgeTextColor) chrome.action.setBadgeTextColor({ tabId, color: "#ffffff" });
   chrome.action.setTitle({ tabId, title: "CampusGuard: " + r.verdict + ", risk score " + Math.round(r.risk_score * 100) + "/100. Click for details." });
-  if (!HAS_DC) chrome.action.setIcon({ tabId, path: ON_ICON });
+  litIcon(tabId, true);
+}
+// The icon-lighting rules only apply on the next page load, so allowed sites also light the icon directly.
+const litTabs = new Set();
+function litIcon(tabId, lit) {
+  if (lit) { litTabs.add(tabId); chrome.action.setIcon({ tabId, path: ON_ICON }); }
+  else if (litTabs.has(tabId) || !HAS_DC) { litTabs.delete(tabId); chrome.action.setIcon({ tabId, path: OFF_ICON }); }
 }
 function showState(tabId, state) {
   chrome.action.setBadgeText({ tabId, text: "" });
@@ -133,11 +139,34 @@ function showState(tabId, state) {
     "not-mail": "CampusGuard",
   }[state] || "CampusGuard";
   chrome.action.setTitle({ tabId, title });
-  if (!HAS_DC) chrome.action.setIcon({ tabId, path: state === "not-mail" || state === "off" ? OFF_ICON : ON_ICON });
+  litIcon(tabId, !(state === "not-mail" || state === "off"));
 }
 chrome.tabs.onUpdated.addListener((tabId, info) => {
   if (info.status === "loading") showState(tabId, "not-mail");   // a new page: forget the old result
 });
+
+// ------------------------------------------------------------------ scam alert: drop the popup down from the icon
+// Alerts once each time a scam email is opened (not again while it stays open). Returns "popup" when the drop-down opened, "page" when the content script should show
+// its own small alert instead (a browser without openPopup, or the window isn't focused), or "none".
+async function popAlert(tab, key) {
+  const seen = (await chrome.storage.session.get("alerted")).alerted || {};
+  if (seen[tab.id] === key) return "none";
+  seen[tab.id] = key; await chrome.storage.session.set({ alerted: seen });
+  if (!tab.active) return "page";
+  if (chrome.action.openPopup) {
+    try {
+      await chrome.storage.session.set({ cgAuto: { tabId: tab.id, at: Date.now() } });
+      await chrome.action.openPopup({ windowId: tab.windowId });
+      return "popup";
+    } catch (e) { /* not allowed right now */ }
+  }
+  return "page";
+}
+async function forgetAlert(id) {
+  const seen = (await chrome.storage.session.get("alerted")).alerted || {};
+  if (id in seen) { delete seen[id]; await chrome.storage.session.set({ alerted: seen }); }
+}
+chrome.tabs.onRemoved.addListener(forgetAlert);
 
 // ------------------------------------------------------------------ messages
 chrome.runtime.onMessage.addListener((msg, sender, reply) => {
@@ -156,12 +185,14 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
         const e = msg.email || {};
         const result = analyze((e.subject ? e.subject + "\n" : "") + (e.text || ""), e.sender);
         showResult(sender.tab.id, result);
-        reply({ ok: true, result });
+        if (result.risk_level === "low") await forgetAlert(sender.tab.id);
+        const alert = s.popAlert && result.risk_level !== "low" ? await popAlert(sender.tab, msg.email.key) : "none";
+        reply({ ok: true, result, alert });
       } catch (err) { reply({ ok: false, error: String(err) }); }
     });
     return true;
   }
-  if (msg.type === "cg-state" && sender.tab) { showState(sender.tab.id, msg.state); return; }
+  if (msg.type === "cg-state" && sender.tab) { showState(sender.tab.id, msg.state); forgetAlert(sender.tab.id); return; }
   if (msg.type === "cg-show-result" && msg.tabId != null && msg.result) { showResult(msg.tabId, msg.result); return; }
   if (msg.type === "cg-open-report") {
     chrome.storage.session.set({ cgReport: msg.payload }).then(() => chrome.tabs.create({ url: chrome.runtime.getURL("report.html") }));
