@@ -178,8 +178,18 @@ function showState(tabId, state) {
   chrome.action.setTitle({ tabId, title });
   litIcon(tabId, !(state === "not-mail" || state === "off"));
 }
-chrome.tabs.onUpdated.addListener((tabId, info) => {
-  if (info.status === "loading") showState(tabId, "not-mail");   // a new page: forget the old result
+// Chrome reports "loading" not only for real page loads but every time a web app changes the address bar
+// (opening an email, going back to the inbox). On an allowed email site that is not a new page, so ask the
+// email reader there to look again and report; only clear the icon when the tab went somewhere else.
+chrome.tabs.onUpdated.addListener(async (tabId, info, tab) => {
+  if (info.status !== "loading") return;
+  const origin = S.originOf(info.url || (tab && tab.url) || "");
+  const s = await getSettings();
+  if (origin && s.sites[origin] && s.sites[origin].enabled !== false) {
+    chrome.tabs.sendMessage(tabId, { type: "cg-recheck" }, () => void chrome.runtime.lastError);
+    return;
+  }
+  showState(tabId, "not-mail");                                    // a different site: forget the old result
 });
 
 // ------------------------------------------------------------------ scam alert: drop the popup down from the icon

@@ -14,6 +14,8 @@ function render() {
   // like real Gmail, the email arrives in steps: the body first, the rest of it a moment later
   main.innerHTML = '<h2 class="hP">' + m.subject + '</h2><div class="adn ads"><div><span class="gD" email="' + m.email + '" name="' + m.name + '">' + m.name + '</span></div><div class="a3s aiL">' + m.body.split("<br><br>")[0] + '</div></div>';
   setTimeout(() => { const b = main.querySelector(".a3s"); if (b) b.innerHTML = m.body; }, 500);
+  // and, like real Gmail, it touches the address bar again after the email has loaded
+  setTimeout(() => history.replaceState(null, "", location.href.replace(/\?.*$/, "") + ""), 3500);
 }
 window.addEventListener("hashchange", render); render();
 // like real Gmail, the page keeps changing on its own (here: every 100 ms), so it never "goes quiet"

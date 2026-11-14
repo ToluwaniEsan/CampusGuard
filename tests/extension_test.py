@@ -123,8 +123,13 @@ async def main():
         check("in-page card off by default", await g.locator(".cg-holder").count() == 0)
         await g.evaluate("location.hash = '#inbox/legit'"); await g.wait_for_timeout(1500)
         check("next email: badge shows OK", await badge(gid) == "OK", await badge(gid))
+        await g.wait_for_timeout(3000)
+        check("badge stays after the page touches its address", await badge(gid) == "OK", await badge(gid))
         await g.evaluate("location.hash = '#inbox'"); await g.wait_for_timeout(1500)
         check("no email open: badge cleared", await badge(gid) == "", await badge(gid))
+        await g.go_back(); await g.wait_for_timeout(2500)
+        check("back to the same email: badge comes back", await badge(gid) == "OK", await badge(gid))
+        await g.evaluate("location.hash = '#inbox'"); await g.wait_for_timeout(1500)
 
         # ---------------------------------------------------------- settings: in-page card, auto-check, site switch
         pop = await popup(gid)

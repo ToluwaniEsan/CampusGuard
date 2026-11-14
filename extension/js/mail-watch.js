@@ -24,8 +24,10 @@
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const identOf = e => location.pathname + location.hash + "|" + e.sender + "|" + e.subject;
   let lastIdent = null, reading = null;
+  let lastHref = location.href;
   async function tick() {
     if (stopped) return;
+    if (location.href !== lastHref) { lastHref = location.href; lastIdent = null; lastKey = null; }   // moved: report again
     if (!siteOn()) { if (lastKey !== "off") { lastKey = "off"; lastIdent = null; removeCard(); send({ type: "cg-state", state: "off" }); } return; }
     const r = CGMailReader.read(document, location);
     if (!r.isMailPage || !r.email) {
@@ -69,6 +71,7 @@
   window.addEventListener("popstate", () => soon(300));
 
   const onMsg = (msg, _sender, reply) => {
+    if (msg && msg.type === "cg-recheck") { lastIdent = null; lastKey = null; soon(150); return; }
     if (!msg || msg.type !== "cg-get-email") return;
     const r = CGMailReader.readPlain(document, location);
     reply(r);
