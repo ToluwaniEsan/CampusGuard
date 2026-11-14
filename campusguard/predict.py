@@ -14,6 +14,7 @@ from pathlib import Path
 import joblib
 import numpy as np
 
+from .category import classify as classify_category, CATEGORY_DISCOUNT, CATEGORY_PULL, DANGER_FLAGS
 from .features import (ENGINEERED_NAMES, FREE_MAIL, TRUSTED_BRANDS, TRUSTED_CAMPUS_DOMAINS, URL_MODEL_FEATURES,
                        URL_MODEL_LABELS, flag_meta, lookalike_of, message_features, sender_profile, url_struct)
 from .psl import split_host
@@ -172,7 +173,7 @@ class CampusGuard:
         self.url_trees, self.url_threshold = u["exported"], u["threshold"]
 
     # ------------------------------------------------------------------ public API
-    def analyze(self, content: str, sender: str | None = None) -> dict:
+    def analyze(self, content: str, sender: str | None = None, category_hint: str | None = None) -> dict:
         t0 = time.perf_counter()
         content = (content or "").strip()
         sender = (sender or "").strip() or None
@@ -183,7 +184,7 @@ class CampusGuard:
         elif is_bare_url(content):
             out = self._analyze_url_only(content)
         else:
-            out = self._analyze_message(content, sender)
+            out = self._analyze_message(content, sender, category_hint)
         out["model_version"] = self.version
         out["latency_ms"] = round((time.perf_counter() - t0) * 1000, 1)
         return out
@@ -220,7 +221,7 @@ class CampusGuard:
         return sigmoid(z), z
 
     # ------------------------------------------------------------------ message path
-    def _analyze_message(self, content, sender):
+    def _analyze_message(self, content, sender, category_hint=None):
         norm = normalise_raw(content)
         clean = clean_for_tfidf(norm, already_normalised=True)
         text, feats, evidence, url_structs = message_features(norm, normalised=True)
@@ -278,6 +279,32 @@ class CampusGuard:
             else:
                 effect = "official_links_elsewhere"
         sender_check = build_sender_check(prof, effect, rate, content_risk, risk, bool(risky_asks))
+
+        # ---- 3. what kind of email it is (v2.4): a bounded nudge, never a loophole
+        cat = classify_category(text, prof, [r["parts"]["registered_domain"] for r in url_reports], category_hint)
+        danger = (any(feats.get(n, 0) > 0 for n in DANGER_FLAGS) or bool(hits) or cat["callback"]
+                  or any(s["ip_host"] or s["lookalike"] or s["punycode"] for s in url_structs))
+        cat_effect, cat_rate = "none", 0.0
+        for name, on in (("category_fake_social", cat["fake_social"]), ("category_notice_personal_mailbox", cat["notice_personal"])):
+            if on and CATEGORY_PULL[name] > cat_rate:
+                cat_effect, cat_rate = "raise", CATEGORY_PULL[name]
+        if cat_effect == "raise":
+            risk = risk + cat_rate * (1.0 - risk)
+            for name in ("category_fake_social", "category_notice_personal_mailbox"):
+                if cat["fake_social" if name == "category_fake_social" else "notice_personal"]:
+                    label, why = flag_meta(name)
+                    ev = [prof["address"]] if prof and prof.get("address") else []
+                    if name == "category_fake_social":
+                        ev.append(f"claims to be {cat['fake_social_platform'].title()}")
+                    sender_flags.append({"flag": name, "label": label, "why": why, "contribution": None,
+                                         "severity": "High" if name == "category_fake_social" else "Medium", "evidence": ev})
+        elif (cat["category"] in ("promotions", "updates", "forums", "social") and cat["consistent"]
+              and not danger and effect != "lower"):
+            cat_effect, cat_rate = "lower", CATEGORY_DISCOUNT
+            risk = risk * (1.0 - CATEGORY_DISCOUNT)
+            good.insert(0, f"{cat['label']} email whose links all go back to the sender")
+        category = {"id": cat["category"], "label": cat["label"], "signals": cat["signals"], "effect": cat_effect,
+                    "rate": cat_rate, "consistent": cat["consistent"]}
         level = self._level(risk)
         if level == "low":
             # v2.3: the general wording flag only explains a warning; on a safe verdict it confuses
@@ -292,7 +319,7 @@ class CampusGuard:
             "risk_score": round(risk, 4), "content_score": round(content_risk, 4), "message_model_score": round(p_msg, 4),
             "url_model_score": round(p_url, 4) if url_reports else None,
             "red_flags": flags, "highlights": highlights, "analyzed_text": text, "urls": url_reports,
-            "good_signs": good + self._normal_words(contrib), "sender_check": sender_check,
+            "good_signs": good + self._normal_words(contrib), "sender_check": sender_check, "category": category,
             "explanation": self._plain_english(level, risk, flags, url_reports),
             "recommended_action": self._action(level, flags),
         }

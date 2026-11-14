@@ -8,7 +8,7 @@
   "unseen_legit_false_alarms": {
     "spamassassin_ham": {
       "n": 1000,
-      "false_alarm_rate": 0.016
+      "false_alarm_rate": 0.015
     },
     "enron_ham": {
       "n": 1000,
@@ -16,7 +16,7 @@
     },
     "ceas_ham": {
       "n": 1000,
-      "false_alarm_rate": 0.029
+      "false_alarm_rate": 0.024
     },
     "ling_ham": {
       "n": 1000,

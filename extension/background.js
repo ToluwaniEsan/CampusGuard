@@ -19,7 +19,17 @@ const HAS_DC = !!(chrome.declarativeContent && chrome.declarativeContent.onPageC
 
 function slim(r) { const o = Object.assign({}, r); delete o.trace; return o; }
 const getSettings = () => chrome.storage.local.get(DEFAULTS).then(v => Object.assign({}, DEFAULTS, v));
-function analyze(text, sender) { return slim(engine.analyze(text || "", sender || "")); }
+function analyze(text, sender, hint) { return slim(engine.analyze(text || "", sender || "", { category_hint: hint || null })); }
+
+// a short log of the last automatic checks (no email text: just when, where, the verdict and what the
+// alert did), shown in Settings so a problem can be seen without opening developer tools
+async function logCheck(entry) {
+  try {
+    const log = (await chrome.storage.session.get("cgLog")).cgLog || [];
+    log.unshift(Object.assign({ t: Date.now() }, entry));
+    await chrome.storage.session.set({ cgLog: log.slice(0, 6) });
+  } catch (e) { /* session storage unavailable */ }
+}
 
 // ------------------------------------------------------------------ allowed sites
 // A site counts as allowed when the browser has granted access to it AND it is in our list.
@@ -175,18 +185,19 @@ chrome.tabs.onUpdated.addListener((tabId, info) => {
 // ------------------------------------------------------------------ scam alert: drop the popup down from the icon
 // Alerts once each time a scam email is opened (not again while it stays open). Returns "popup" when the drop-down opened, "page" when the content script should show
 // its own small alert instead (a browser without openPopup, or the window isn't focused), or "none".
+let lastWhy = "";
 async function popAlert(tab, key) {
   const seen = (await chrome.storage.session.get("alerted")).alerted || {};
-  if (seen[tab.id] === key) return "none";
+  if (seen[tab.id] === key) { lastWhy = "already shown for this email"; return "none"; }
   seen[tab.id] = key; await chrome.storage.session.set({ alerted: seen });
-  if (!tab.active) return "page";
+  if (!tab.active) { lastWhy = "tab not in front"; return "page"; }
   if (chrome.action.openPopup) {
     try {
       await chrome.storage.session.set({ cgAuto: { tabId: tab.id, at: Date.now() } });
       await chrome.action.openPopup({ windowId: tab.windowId });
-      return "popup";
-    } catch (e) { /* not allowed right now */ }
-  }
+      lastWhy = ""; return "popup";
+    } catch (e) { lastWhy = "browser said: " + ((e && e.message) || e); }
+  } else lastWhy = "this browser can't open it";
   return "page";
 }
 async function forgetAlert(id) {
@@ -200,7 +211,7 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   if (!msg) return;
   if (msg.type === "cg-dev-check") { devStamp(false); return; }
   if (msg.type === "cg-analyze") {
-    try { reply({ ok: true, result: analyze(msg.text, msg.sender) }); } catch (e) { reply({ ok: false, error: String(e) }); }
+    try { reply({ ok: true, result: analyze(msg.text, msg.sender, msg.hint) }); } catch (e) { reply({ ok: false, error: String(e) }); }
     return;
   }
   if (msg.type === "cg-mail" && sender.tab) {
@@ -211,11 +222,15 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
       if (!site || site.enabled === false || !s.autoCheck) { reply({ ok: false }); return; }
       try {
         const e = msg.email || {};
-        const result = analyze((e.subject ? e.subject + "\n" : "") + (e.text || ""), e.sender);
+        const result = analyze((e.subject ? e.subject + "\n" : "") + (e.text || ""), e.sender, e.hint);
         showResult(sender.tab.id, result);
         if (result.risk_level === "low") await forgetAlert(sender.tab.id);
+        lastWhy = result.risk_level === "low" ? "safe: no pop-up needed" : s.popAlert ? "" : "pop-up turned off";
         const alert = s.popAlert && result.risk_level !== "low" ? await popAlert(sender.tab, msg.email.key) : "none";
         reply({ ok: true, result, alert });
+        logCheck({ host: new URL(origin).hostname, verdict: result.verdict, level: result.risk_level, score: Math.round(result.risk_score * 100),
+          type: result.category ? result.category.label : "", alert: alert === "popup" ? "drop-down opened" : alert === "page" ? "alert shown on the page" : "no pop-up",
+          why: lastWhy });
       } catch (err) { reply({ ok: false, error: String(err) }); }
     });
     return true;

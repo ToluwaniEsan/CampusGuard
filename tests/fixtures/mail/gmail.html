@@ -11,7 +11,9 @@ const MAILS = {
 function render() {
   const id = location.hash.split("/")[1], m = MAILS[id], main = document.getElementById("main");
   if (!m) { main.innerHTML = '<table><tr><td>Dr. Monica Reed</td><td>Re: CS410 homework question</td></tr><tr><td>Financial Aid</td><td>URGENT: Verify</td></tr></table>'; return; }
-  main.innerHTML = '<h2 class="hP">' + m.subject + '</h2><div class="adn ads"><div><span class="gD" email="' + m.email + '" name="' + m.name + '">' + m.name + '</span></div><div class="a3s aiL">' + m.body + '</div></div>';
+  // like real Gmail, the email arrives in steps: the body first, the rest of it a moment later
+  main.innerHTML = '<h2 class="hP">' + m.subject + '</h2><div class="adn ads"><div><span class="gD" email="' + m.email + '" name="' + m.name + '">' + m.name + '</span></div><div class="a3s aiL">' + m.body.split("<br><br>")[0] + '</div></div>';
+  setTimeout(() => { const b = main.querySelector(".a3s"); if (b) b.innerHTML = m.body; }, 500);
 }
 window.addEventListener("hashchange", render); render();
 // like real Gmail, the page keeps changing on its own (here: every 100 ms), so it never "goes quiet"

@@ -667,7 +667,7 @@
       return URL_FULL.test(s) || BARE2.test(s);
     }
 
-    function analyzeMessage(content, sender) {
+    function analyzeMessage(content, sender, hint) {
       const norm = normaliseRaw(content);
       const clean = cleanForTfidf(norm);
       const mf = messageFeatures(norm);
@@ -728,6 +728,35 @@
       }
       const senderCheck = buildSenderCheck(prof, effect, rate, contentRisk, risk, riskyAsks.length > 0);
       if (effect === "raise" || effect === "lower") rulesApplied.push({ rule: effect === "raise" ? "Sender adjustment (suspicious sender)" : "Sender adjustment (official sender)", from: contentRisk, to: risk });
+      // ---- 3. what kind of email it is (v2.4): a bounded nudge, never a loophole
+      let category = null;
+      if (CAT) {
+        const cat = classifyCategory(mf.text, prof, urlReports.map(r => r.parts.registered_domain), hint);
+        const danger = CAT.danger_flags.some(n => (mf.feats[n] || 0) > 0) || hits.length > 0 || cat.callback ||
+          mf.structs.some(s => s.ip_host || s.lookalike || s.punycode);
+        let catEffect = "none", catRate = 0;
+        const before = risk;
+        for (const [name, on] of [["category_fake_social", cat.fake_social], ["category_notice_personal_mailbox", cat.notice_personal]]) {
+          if (on && CAT.pull[name] > catRate) { catEffect = "raise"; catRate = CAT.pull[name]; }
+        }
+        if (catEffect === "raise") {
+          risk = risk + catRate * (1 - risk);
+          for (const name of ["category_fake_social", "category_notice_personal_mailbox"]) {
+            if (cat[name === "category_fake_social" ? "fake_social" : "notice_personal"]) {
+              const [label, why] = flagMeta(name);
+              const ev = prof && prof.address ? [prof.address] : [];
+              if (name === "category_fake_social") ev.push("claims to be " + cat.fake_social_platform.charAt(0).toUpperCase() + cat.fake_social_platform.slice(1));
+              senderFlags.push({ flag: name, label, why, contribution: null, severity: name === "category_fake_social" ? "High" : "Medium", evidence: ev });
+            }
+          }
+        } else if (["promotions", "updates", "forums", "social"].indexOf(cat.category) !== -1 && cat.consistent && !danger && effect !== "lower") {
+          catEffect = "lower"; catRate = CAT.discount;
+          risk = risk * (1 - CAT.discount);
+          good.unshift(cat.label + " email whose links all go back to the sender");
+        }
+        if (catEffect !== "none") rulesApplied.push({ rule: "Email type: " + cat.label, from: before, to: risk });
+        category = { id: cat.category, label: cat.label, signals: cat.signals, effect: catEffect, rate: catRate, consistent: cat.consistent };
+      }
       const lvl = level(risk);
       if (lvl === "low") {   // v2.3: the general wording flag only explains a warning
         flags = flags.filter(f => f.flag !== "suspicious_wording");
@@ -754,9 +783,53 @@
         input_type: "message", verdict: INF.verdicts[lvl], risk_level: lvl, risk_score: pyRound(risk, 4), content_score: pyRound(contentRisk, 4),
         message_model_score: pyRound(pMsg, 4), url_model_score: urlReports.length ? pyRound(pUrl, 4) : null,
         red_flags: flags, highlights, analyzed_text: mf.text, urls: urlReports.map(stripPriv),
-        good_signs: good.concat(normalWords(contrib)), sender_check: senderCheck,
+        good_signs: good.concat(normalWords(contrib)), sender_check: senderCheck, category,
         explanation: plainEnglish(lvl, risk, flags, urlReports), recommended_action: action(lvl, flags), trace,
       };
+    }
+    // ---- v2.4 email categories (mirrors campusguard/category.py)
+    const CAT = M.category || null;
+    const CUE = {};
+    if (CAT) for (const k in CAT.cues) CUE[k] = rx1(CAT.cues[k], "im");
+    function sameOrg(linkDom, senderDom) {
+      if (!linkDom || !senderDom) return false;
+      if (linkDom === senderDom || CAT.mailing_services.indexOf(linkDom) !== -1) return true;
+      const a = linkDom.split(".")[0], b = senderDom.split(".")[0];
+      return a.length >= 4 && b.length >= 4 && (b.indexOf(a) !== -1 || a.indexOf(b) !== -1);
+    }
+    function classifyCategory(text, prof, linkDomains, hint) {
+      const t = foldText(text || "");
+      const hits = {};
+      for (const k in CUE) hits[k] = CUE[k].test(t);
+      const dom = (prof && prof.domain) || "";
+      const signals = [];
+      const platform = Object.keys(CAT.social_platforms).find(p => CAT.social_platforms[p].indexOf(dom) !== -1) || "";
+      let cat;
+      if (platform) { cat = "social"; signals.push("sent by " + dom); }
+      else if (hits.social && !hits.bulk_footer && !hits.promo) { cat = "social"; signals.push("notification wording"); }
+      else if (hits.forum && !hits.promo) { cat = "forums"; signals.push("mailing-list or reply thread"); }
+      else if (hits.bulk_footer && (hits.promo || !hits.update)) { cat = "promotions"; signals.push("unsubscribe or view-in-browser footer"); }
+      else if (hits.promo && !hits.update) { cat = "promotions"; signals.push("sale or offer wording"); }
+      else if (hits.update || hits.notice) { cat = "updates"; signals.push("receipt, delivery or account-notice wording"); }
+      else if (prof && prof.official) { cat = "school_work"; signals.push("official domain (" + dom + ")"); }
+      else cat = "personal";
+      if (hint && CAT.labels[hint] && hint !== cat && (cat === "personal" || cat === "school_work")) { cat = hint; signals.push("the mailbox's own category"); }
+      const hasSender = !!dom && !(prof && prof.freemail);
+      const linksFit = linkDomains.every(d => sameOrg(d, dom) || (platform && CAT.social_platforms[platform].indexOf(d) !== -1));
+      const org = dom.split(".")[0];
+      const dispFold = foldText((prof && prof.display_name) || "").toLowerCase();
+      const name = dispFold.replace(/[^a-z0-9]/g, "");
+      const body = t.toLowerCase().replace(/[^a-z0-9]/g, "");
+      const inText = new RegExp("\\b" + escapeRe(org) + "\\b").test(t.toLowerCase()) || (org.length >= 6 && body.indexOf(org) !== -1);
+      const identity = !!org && org.length >= 3 && (inText || (name.length >= 4 && (org.indexOf(name) !== -1 || name.indexOf(org) !== -1)) ||
+        (dispFold.match(/[a-z0-9]+/g) || []).some(w => w.length >= 4 && org.indexOf(w) !== -1));
+      const consistent = hasSender && linksFit && identity;
+      const named = Object.keys(CAT.social_platforms).filter(p => new RegExp("\\b" + p + "\\b", "i").test(t));
+      const fakeSocial = !!(hits.social && named.length && dom && !platform && !named.some(p => CAT.social_platforms[p].indexOf(dom) !== -1));
+      const noticePersonal = !!(hits.notice && prof && prof.freemail);
+      const callback = !!(hits.callback && hits.charge);
+      return { category: cat, label: CAT.labels[cat], signals, consistent: !!consistent, fake_social: fakeSocial,
+        fake_social_platform: fakeSocial ? named[0] : "", notice_personal: noticePersonal, callback };
     }
     function senderDomain(sender) {
       if (!sender) return "";
@@ -794,7 +867,7 @@
       };
     }
 
-    function analyze(content, sender) {
+    function analyze(content, sender, opts) {
       const t0 = (typeof performance !== "undefined" ? performance.now() : Date.now());
       content = pyStrip(content || "");
       sender = pyStrip(sender || "") || null;
@@ -802,7 +875,7 @@
       if (!content) out = { input_type: "empty", verdict: "Nothing to check", risk_level: "low", risk_score: 0, red_flags: [],
         highlights: [], urls: [], analyzed_text: "", good_signs: [], explanation: "Paste a message or a link to check it.", recommended_action: "" };
       else if (isBareUrl(content)) out = analyzeUrlOnly(content);
-      else out = analyzeMessage(content, sender);
+      else out = analyzeMessage(content, sender, (opts && opts.category_hint) || null);
       out.model_version = M.version;
       out.latency_ms = pyRound((typeof performance !== "undefined" ? performance.now() : Date.now()) - t0, 1);
       return out;

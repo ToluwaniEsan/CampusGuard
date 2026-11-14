@@ -19,7 +19,7 @@ textarea, #sender { width: 100%; border: 1px solid var(--line); background: var(
 .res { border-left: 6px solid var(--vcolor); background: var(--vsoft); padding: 10px 12px 10px 12px; }
 .res .top { display: flex; align-items: center; gap: 10px; }
 .res .vt { flex: 1; min-width: 0; }
-.res .vt b { display: block; font: 700 17px/1.15 var(--f-display); color: var(--vcolor); letter-spacing: .01em; }
+.res .vt b { display: inline; font: 700 17px/1.15 var(--f-display); color: var(--vcolor); letter-spacing: .01em; }
 .res .vt span { display: block; font-size: 13px; color: var(--ink); margin-top: 2px; }
 .res .num { text-align: center; color: var(--vcolor); line-height: 1; }
 .res .num b { display: block; font: 700 30px/1 var(--f-display); font-variant-numeric: tabular-nums; }
@@ -56,3 +56,7 @@ input[role="switch"]::after { content: ""; position: absolute; top: 3px; left: 3
 input[role="switch"]:checked { background: var(--teal); }
 input[role="switch"]:checked::after { left: 19px; }
 @media (prefers-reduced-motion: reduce) { input[role="switch"], input[role="switch"]::after { transition: none; } }
+.tag { display: inline-block; font: 600 11px/1 var(--f-body); font-style: normal; color: var(--ink-2); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 3px 7px; vertical-align: 3px; margin-left: 6px; }
+.log summary { cursor: pointer; }
+.log ul { margin: 6px 0 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: 12px; }
+.log li small { display: block; color: var(--ink-3); }

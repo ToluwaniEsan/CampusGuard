@@ -46,6 +46,25 @@ curl -s localhost:8000/api/analyze -H 'content-type: application/json' \
   -d '{"text":"Your mailbox will be deactivated today. Verify: http://45.89.127.22/login","sender":"IT <it@aamu-support.com>"}'
 ```
 
+## What changed in v2.4: email types
+
+CampusGuard now works out what kind of email it is looking at: **Personal, Promotion, Social, Update** (receipts,
+shipping, account notices), **Forum or list**, or **School or work**. It uses the text (unsubscribe footers, sale wording,
+order numbers, notification wording, quoted replies), the From line and where the links go; in the extension,
+also the Gmail tab the email was opened from. The type then plays a bounded part in the verdict
+(`campusguard/category.py`, mirrored in the JS engine):
+
+| When | Effect |
+|---|---|
+| A promotion, update, list or social email whose sender is a real company domain, named in the email, and every link goes back to it | risk × 0.75 (same size as the official-sender discount) |
+| …but it asks for a password, money, gift cards or personal details, has a dangerous link, a suspicious sender, or a "call this number about your payment" | no discount, ever |
+| A delivery or account notice from a personal mailbox (Gmail, Yahoo, Outlook…) | new red flag, risk pulled up 20% of the way to 100 |
+| Reads like a LinkedIn/Instagram/etc. notification but isn't sent by that site | new red flag, risk pulled up 25% of the way |
+
+Same test sets as v2.3, full app: scams caught on the held-out set unchanged (97.56%), no legitimate email newly
+flagged, false alarms on unseen real mail down (CEAS 2.9% → 2.4%, SpamAssassin 1.6% → 1.5%; Enron, Ling and SMS
+unchanged). Batteries 25/25 · 0/20 and 22/22 · 0/18, regression 15/15, Python/JS parity 951/951.
+
 ## What changed in v2.3
 
 | Improvement | What was done |

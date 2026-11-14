@@ -23,6 +23,9 @@ from campusguard import predict as PR  # noqa: E402
 from campusguard.model import CHAR_MAX, CHAR_MIN, TOKEN_SRC, r7  # noqa: E402
 
 
+from campusguard import category as CAT  # noqa: E402
+
+
 def main():
     m = joblib.load(ROOT / "models" / "campusguard_message_model.joblib")
     u = joblib.load(ROOT / "models" / "campusguard_url_model.joblib")
@@ -93,6 +96,11 @@ def main():
             "risky_request_flags": PR.RISKY_REQUEST_FLAGS, "max_urls": PR.MAX_URLS, "verdicts": PR.VERDICTS,
             "placeholders": sorted(["urltoken", "emailtoken", "moneytoken", "0"]),
             "evidence_stop": PR.EVIDENCE_STOP, "wording_high": PR.WORDING_HIGH, "wording_medium": PR.WORDING_MEDIUM,
+        },
+        "category": {
+            "cues": {k: v.pattern for k, v in CAT.CUES.items()}, "labels": CAT.CATEGORY_LABELS,
+            "social_platforms": CAT.SOCIAL_PLATFORMS, "mailing_services": CAT.MAILING_SERVICES,
+            "discount": CAT.CATEGORY_DISCOUNT, "pull": CAT.CATEGORY_PULL, "danger_flags": CAT.DANGER_FLAGS,
         },
         "psl": json.loads((ROOT / "campusguard" / "psl_rules.json").read_text()),
     }

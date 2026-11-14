@@ -35,6 +35,9 @@
       .filter(h => /^https?:/i.test(h) && t.indexOf(h) === -1);
     const uniq = [...new Set(hrefs)].slice(0, 15);
     if (uniq.length) t += "\n\nLinks in this email: " + uniq.join(" ");
+    // pictures: their alt text often carries the message in image-heavy emails (no image is downloaded or read)
+    const alts = [...new Set([...el.querySelectorAll("img[alt]")].map(i => clean(i.getAttribute("alt"))).filter(a => a.length >= 3 && t.indexOf(a) === -1))].slice(0, 10);
+    if (alts.length) t += "\n\nImage text: " + alts.join(" | ");
     return t.slice(0, MAX_TEXT);
   }
   function senderFrom(el) {
@@ -178,6 +181,7 @@
       let found = null;
       try { found = ADAPTERS[name](doc); } catch (e) { found = null; }
       if (!found) { const b = messageBlock(doc); const sig = signals(doc, loc); if (b && sig.score >= 3) found = make(name, b, genericSender(doc), genericSubject(doc)); }
+      if (found) found.email.hint = mailboxHint(loc);
       return { isMailPage: true, site: name, email: found ? found.email : null, el: found ? found.el : null };
     }
     const sig = signals(doc, loc);
@@ -186,6 +190,12 @@
     // an email is "open" only when there are Reply/Forward controls or From/Subject labels on screen
     if (isMailPage && (sig.actions >= 1 || sig.labels >= 2)) found = make("generic", messageBlock(doc), genericSender(doc), genericSubject(doc));
     return { isMailPage, site: "generic", email: found ? found.email : null, el: found ? found.el : null, score: sig.score };
+  }
+  // Gmail sorts mail into tabs; an email opened from one has it in the address (#category/promotions/...).
+  function mailboxHint(loc) {
+    if (loc.hostname !== "mail.google.com") return null;
+    const m = (loc.hash || "").match(/^#category\/(promotions|social|updates|forums)\b/);
+    return m ? m[1] : null;
   }
   function readPlain(doc, loc) { const r = read(doc, loc); return { isMailPage: r.isMailPage, site: r.site, email: r.email }; }
 

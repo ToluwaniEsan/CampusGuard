@@ -41,7 +41,7 @@
       const seen = new Set();
       items = topFlags(r).map(f => { const ev = (f.evidence || []).find(e => !seen.has(e)); if (ev) seen.add(ev); return { label: f.label, ev }; });
     }
-    return '<div class="lvl-' + lvl + '"><div class="res" role="status"><div class="top"><div class="vt"><b>' + esc(r.verdict) + "</b><span>" + HEAD[lvl] + "</span></div>" +
+    return '<div class="lvl-' + lvl + '"><div class="res" role="status"><div class="top"><div class="vt"><b>' + esc(r.verdict) + "</b>" + (r.category && r.category.id !== "personal" ? '<em class="tag">' + esc(r.category.label) + "</em>" : "") + "<span>" + HEAD[lvl] + "</span></div>" +
       '<div class="num" title="How closely this matches known scams. It ranks risk; it is not a probability."><b>' + R.pct(r.risk_score) + "</b><small>risk / 100</small></div></div></div>" +
       (autoOpened && lvl === "medium" ? '<div class="fade" id="fadebar"></div>' : "") +
       (items.length ? '<div class="why"><h3>' + (lvl === "low" ? "Why it looks fine" : "Why") + "</h3><ul>" +
@@ -158,7 +158,7 @@
   }
 
   async function showEmail(email, offerAlways) {
-    const res = await send({ type: "cg-analyze", text: (email.subject ? email.subject + "\n" : "") + email.text, sender: email.sender });
+    const res = await send({ type: "cg-analyze", text: (email.subject ? email.subject + "\n" : "") + email.text, sender: email.sender, hint: email.hint });
     if (!res || !res.ok) { note("Something went wrong", "Try again."); return; }
     const r = res.result;
     lastEmail = { result: r, text: email.text, sender: email.sender, url };
@@ -197,6 +197,11 @@
         '<input type="checkbox" role="switch" data-site="' + esc(o) + '" aria-label="Check emails on ' + esc(h) + '"' + (s.sites[o].enabled !== false ? " checked" : "") + ">" +
         '<button class="linkbtn" data-remove="' + esc(o) + '" aria-label="Remove ' + esc(h) + '">Remove</button></div>');
     }
+    let log = [];
+    try { log = (await chrome.storage.session.get("cgLog")).cgLog || []; } catch (e) { log = []; }
+    $("#s-log").innerHTML = log.length ? log.map(x => "<li><b>" + new Date(x.t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + "</b> " + esc(x.host) + ": " +
+      esc(x.verdict) + " " + x.score + (x.type ? " · " + esc(x.type) : "") + "<small>" + esc(x.alert) + (x.why ? " (" + esc(x.why) + ")" : "") + "</small></li>").join("")
+      : '<li class="muted">None yet. Open an email on an allowed site.</li>';
     $("#s-sites").innerHTML = rows.length ? rows.join("") : '<p class="muted">None yet. Open your webmail, click CampusGuard and choose Allow.</p>';
     $("#s-sites").querySelectorAll("[data-site]").forEach(el => el.addEventListener("change", async () => {
       const v = await getSettings(); v.sites[el.dataset.site] = { enabled: el.checked }; await chrome.storage.local.set({ sites: v.sites });

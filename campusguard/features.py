@@ -211,6 +211,8 @@ SENDER_RULE_META = {
     "sender_display_mismatch": ("Sender name doesn't match their address", "It says it's from the school or a brand, but the address belongs to someone else."),
     "sender_freemail": ("Official-sounding sender using a personal mailbox", "Offices and companies don't send official notices from Gmail/Yahoo."),
     "sender_trusted_risky_request": ("Official address, but a risky request", "Real offices never ask for passwords, codes or payments by message. A hacked account can send from a real address."),
+    "category_notice_personal_mailbox": ("Account or delivery notice from a personal mailbox", "Companies send delivery and account notices from their own domain, not from Gmail, Yahoo or Outlook addresses."),
+    "category_fake_social": ("Looks like a social notification, but isn't from that site", "It reads like a notification from a social site, but the sender's address belongs to someone else."),
 }
 ENGINEERED_NAMES = TEXT_FLAG_NAMES + URL_FLAG_NAMES + ["sender_freemail_official", "shouting", "n_urls"]
 

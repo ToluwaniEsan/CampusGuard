@@ -140,6 +140,9 @@ async def main():
         check("popup fits without scrolling", await popup_height() <= 600, str(await popup_height()))
         await g.evaluate("location.hash = '#inbox/legit'"); await g.wait_for_timeout(1500)
         check("safe email: no popup", await popups() == 0, str(await popups()))
+        log = await sw.evaluate("chrome.storage.session.get('cgLog').then(x => x.cgLog || [])")
+        check("each email checked once (log)", len(log) >= 2 and log[0]["level"] == "low" and log[1]["level"] == "high", str([(x["level"], x["alert"]) for x in log[:3]]))
+        check("check log says the drop-down opened", log[1]["alert"] == "drop-down opened", log[1]["alert"])
         # a scam opened in a background tab gets the backup alert on the page
         g2 = await open_page("https://mail.google.com/mail/u/0/#inbox")
         await g.bring_to_front()

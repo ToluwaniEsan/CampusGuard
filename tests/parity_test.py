@@ -27,7 +27,15 @@ inputs += [{"text": t, "sender": s} for t, s in [
     ("V.E.R.I.F.Y y-o-u-r p a s s w o r d 😀 now at http://аpple-id.com/login", None),
     ("Ваш аккаунт заблокирован. Отправьте пароль.", None), ("Straße naïve façade ﬁnance ½ 🙂 p@ssw0rd l0g1n", None),
     ("¿Me envías la contraseña? 🙏 Es urgente, estoy en una reunión y no puedo hablar.", "Dra. López <lopez.office@gmail.com>"),
-    ("I'm in a meeting, can you buy 2 Google Play cards and send the codes? 🎁", None)]]
+    ("I'm in a meeting, can you buy 2 Google Play cards and send the codes? 🎁", None),
+    # v2.4 email categories
+    ("Super Weekend Sale! Save 20-60% this weekend. Shop now: http://jcpenneyem.com/a/x  Unsubscribe | Manage preferences", "JCPenney <deals@jcpenneyem.com>"),
+    ("Your package is on hold due to an incomplete address. Update your details: http://usps-help.top/x", "USPS <usps.delivery.help@gmail.com>"),
+    ("Jay sent you a connection request on LinkedIn. View profile: http://linkedin-mailer.net/v", "LinkedIn <notify@linkedin-mailer.net>"),
+    ("Jay commented on your post. See the conversation on LinkedIn: https://www.linkedin.com/feed/x", "LinkedIn <notifications-noreply@linkedin.com>"),
+    ("You paid $387.51 to GeekTech-Solutions. If you did not make this payment call (877)-591-9759 to cancel your order.", "Billing Team <billing@geektech-pay.com>"),
+    ("[cs-list] Re: lab 3 question\n> does anyone know when it's due?\nFriday at 5pm. On Tue, Jay wrote:", "Course list <cs-list@lists.example.org>"),
+    ("Your order #A1234 has shipped. Track it on our site: https://www.amazon.com/track", "Amazon.com <shipment-tracking@amazon.com>")]]
 tmp = ROOT / "tests" / "_in.jsonl"; out = ROOT / "tests" / "_out.jsonl"
 tmp.write_text("\n".join(json.dumps(x) for x in inputs))
 subprocess.run(["node", str(ROOT / "tests/parity_run.js"), str(tmp), str(out)], check=True)
@@ -40,7 +48,7 @@ for x, j in zip(inputs, js):
     same = (p["verdict"] == j["verdict"] and d < 1e-3
             and [(f["flag"], f["severity"]) for f in p["red_flags"]] == [(f["flag"], f["severity"]) for f in j["red_flags"]]
             and [(h["start"], h["end"], h["flag"]) for h in p["highlights"]] == [(h["start"], h["end"], h["flag"]) for h in j["highlights"]]
-            and p["explanation"] == j["explanation"] and p.get("good_signs") == j.get("good_signs") and p.get("sender_check") == j.get("sender_check") and p["analyzed_text"] == j["analyzed_text"])
+            and p["explanation"] == j["explanation"] and p.get("good_signs") == j.get("good_signs") and p.get("sender_check") == j.get("sender_check") and p.get("category") == j.get("category") and p["analyzed_text"] == j["analyzed_text"])
     if not same:
         bad += 1
         if bad <= 5:

@@ -18,26 +18,42 @@
   }
 
   // ---------------------------------------------------------------- the loop
+  // Each email is read ONCE, right after it opens: CampusGuard waits until its text has finished loading
+  // (the same text twice in a row, 0.4 s apart), checks it, and then ignores later changes to that page.
+  // An email counts as "the same" while its address in the tab, sender and subject stay the same.
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const identOf = e => location.pathname + location.hash + "|" + e.sender + "|" + e.subject;
+  let lastIdent = null, reading = null;
   async function tick() {
     if (stopped) return;
-    if (!siteOn()) { if (lastKey !== "off") { lastKey = "off"; removeCard(); send({ type: "cg-state", state: "off" }); } return; }
+    if (!siteOn()) { if (lastKey !== "off") { lastKey = "off"; lastIdent = null; removeCard(); send({ type: "cg-state", state: "off" }); } return; }
     const r = CGMailReader.read(document, location);
     if (!r.isMailPage || !r.email) {
       const state = r.isMailPage ? "no-email" : "not-mail";
-      if (lastKey !== state) { lastKey = state; lastResult = null; removeCard(); send({ type: "cg-state", state }); }
+      if (lastKey !== state) { lastKey = state; lastIdent = null; lastResult = null; removeCard(); send({ type: "cg-state", state }); }
       return;
     }
-    if (r.email.key === lastKey) return;
-    lastKey = r.email.key;
+    const ident = identOf(r.email);
+    if (ident === lastIdent || ident === reading) return;      // already checked, or being read right now
+    reading = ident;
+    let email = r.email, el = r.el;
+    for (let i = 0; i < 6; i++) {                               // let the first load finish (at most ~2.4 s)
+      await sleep(400);
+      const again = CGMailReader.read(document, location);
+      if (!again.email || identOf(again.email) !== ident) { reading = null; soon(0); return; }   // they moved on
+      if (again.email.text === email.text) break;
+      email = again.email; el = again.el;
+    }
+    reading = null; lastIdent = ident; lastKey = email.key;
     if (!settings.autoCheck) { removeCard(); send({ type: "cg-state", state: "ready" }); return; }
-    const res = await send({ type: "cg-mail", email: r.email });
-    if (!res || !res.ok || lastKey !== r.email.key) return;
-    lastResult = { result: res.result, email: r.email };
-    if (res.alert === "page" && hiddenFor !== r.email.key) drawAlert(res.result, r.email); else removeCard();
+    const res = await send({ type: "cg-mail", email });
+    if (!res || !res.ok || lastIdent !== ident) return;
+    lastResult = { result: res.result, email };
+    if (res.alert === "page" && hiddenFor !== ident) drawAlert(res.result, email); else removeCard();
   }
-  // Webmail pages change constantly (Gmail updates its page many times a second), so waiting for the page to
-  // "go quiet" never fires there. Instead: check at most once per 600 ms after any change, plus a slow
-  // heartbeat in case the page changes without us seeing it.
+  // Noticing that a new email was opened: webmail pages change constantly (Gmail many times a second), so
+  // look at most once per 600 ms after a change, plus a 2 s heartbeat. Looking is cheap; an email is only
+  // read and checked once (above).
   let due = 0;
   function soon(ms) {
     const at = Date.now() + (ms == null ? 600 : ms);
@@ -63,7 +79,7 @@
     if (area !== "local") return;
     for (const k of Object.keys(changes)) if (k in DEFAULTS) settings = Object.assign({}, settings, { [k]: changes[k].newValue === undefined ? DEFAULTS[k] : changes[k].newValue });
     if (!settings.popAlert) removeCard();
-    lastKey = null; soon(50);
+    lastKey = null; lastIdent = null; soon(50);
   };
   chrome.storage.onChanged.addListener(onStore);
 
@@ -101,6 +117,13 @@
   let fadeT = null;
 
   function removeCard() { clearTimeout(fadeT); if (card) { card.remove(); card = null; } }
+  // built with DOM calls, not innerHTML: Gmail's page security (Trusted Types) can block HTML strings
+  function h(tag, attrs, ...kids) {
+    const el = document.createElement(tag);
+    for (const k in attrs || {}) { if (k === "class") el.className = attrs[k]; else if (k === "style") el.style.cssText = attrs[k]; else el.setAttribute(k, attrs[k]); }
+    for (const c of kids) if (c != null) el.append(c);
+    return el;
+  }
   function drawAlert(r, email) {
     removeCard();
     card = document.createElement("div");
@@ -111,16 +134,21 @@
     const RANK = { High: 0, Medium: 1, Low: 2 };
     const flags = (r.red_flags || []).filter(f => f.flag !== "suspicious_wording").map((f, i) => [f, i])
       .sort((a, b) => (RANK[a[0].severity] - RANK[b[0].severity]) || (a[1] - b[1])).slice(0, 3).map(x => x[0]);
-    root.innerHTML = "<style>" + CSS + '</style><div class="cg" role="alert" style="--c:' + c + ";--s:" + s + '">' +
-      '<div class="res"><div class="vt"><b>' + esc(r.verdict) + "</b><span>" + (HEAD[r.risk_level] || "") + "</span></div>" +
-      '<div class="num"><b>' + Math.round(r.risk_score * 100) + "</b><small>risk / 100</small></div></div>" +
-      "<ul>" + flags.map(f => "<li>" + esc(f.label) + "</li>").join("") + "</ul>" +
-      '<div class="acts"><button data-a="full">See full breakdown</button><button class="x" aria-label="Close">✕</button></div></div>';
-    root.querySelector(".x").onclick = () => { hiddenFor = lastKey; removeCard(); };
-    root.querySelector('[data-a="full"]').onclick = () => send({ type: "cg-open-report", payload: { result: r, text: email.text, sender: email.sender, url: location.href } });
+    const style = document.createElement("style"); style.textContent = CSS;
+    const full = h("button", null, "See full breakdown"), x = h("button", { class: "x", "aria-label": "Close" }, "✕");
+    const tag = r.category && r.category.id !== "personal" ? " · " + r.category.label : "";
+    const box = h("div", { class: "cg", role: "alert", style: "--c:" + c + ";--s:" + s },
+      h("div", { class: "res" },
+        h("div", { class: "vt" }, h("b", null, r.verdict), h("span", null, (HEAD[r.risk_level] || "") + tag)),
+        h("div", { class: "num" }, h("b", null, String(Math.round(r.risk_score * 100))), h("small", null, "risk / 100"))),
+      h("ul", null, ...flags.map(f => h("li", null, f.label))),
+      h("div", { class: "acts" }, full, x));
+    root.append(style, box);
+    x.onclick = () => { hiddenFor = lastIdent; removeCard(); };
+    full.onclick = () => send({ type: "cg-open-report", payload: { result: r, text: email.text, sender: email.sender, url: location.href } });
     if (r.risk_level === "medium") {                 // Suspicious fades after 8 s; High Risk stays until closed
       fadeT = setTimeout(removeCard, 8000);
-      root.querySelector(".cg").addEventListener("mouseenter", () => clearTimeout(fadeT));
+      box.addEventListener("mouseenter", () => clearTimeout(fadeT));
     }
   }
 })();
