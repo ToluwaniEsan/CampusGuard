@@ -35,7 +35,17 @@
     lastResult = { result: res.result, email: r.email };
     if (res.alert === "page" && hiddenFor !== r.email.key) drawAlert(res.result, r.email); else removeCard();
   }
-  function soon(ms) { clearTimeout(timer); timer = setTimeout(tick, ms == null ? 700 : ms); }
+  // Webmail pages change constantly (Gmail updates its page many times a second), so waiting for the page to
+  // "go quiet" never fires there. Instead: check at most once per 600 ms after any change, plus a slow
+  // heartbeat in case the page changes without us seeing it.
+  let due = 0;
+  function soon(ms) {
+    const at = Date.now() + (ms == null ? 600 : ms);
+    if (timer && at >= due) return;               // a check is already coming soon enough
+    clearTimeout(timer); due = at;
+    timer = setTimeout(() => { timer = null; tick(); }, Math.max(0, at - Date.now()));
+  }
+  const beat = setInterval(() => { if (!chrome.runtime || !chrome.runtime.id) { stop(); return; } if (!document.hidden) soon(0); }, 2000);
 
   const obs = new MutationObserver(() => soon());
   obs.observe(document.documentElement, { childList: true, subtree: true, characterData: false });
@@ -58,7 +68,7 @@
   chrome.storage.onChanged.addListener(onStore);
 
   function stop() {
-    stopped = true; obs.disconnect(); clearTimeout(timer); removeCard();
+    stopped = true; obs.disconnect(); clearTimeout(timer); clearInterval(beat); removeCard();
     try { chrome.runtime.onMessage.removeListener(onMsg); chrome.storage.onChanged.removeListener(onStore); } catch (e) { /* extension gone */ }
   }
   window.__cgWatch = { stop };

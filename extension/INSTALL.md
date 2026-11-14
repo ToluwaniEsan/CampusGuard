@@ -13,7 +13,7 @@ CampusGuard isn't in any extension store. You load it by hand ("unpacked"). It t
 4. Click **Load unpacked** and choose the unzipped folder (the one that has `manifest.json` in it).
 5. Pin it: click the puzzle-piece icon in the toolbar, then the pin next to CampusGuard. The shield now sits at the top right.
 
-To update after a new version: replace the folder's contents, then click the reload arrow on CampusGuard's card in the extensions page.
+**Updating:** you never need to remove and re-add it. When the files in the folder change (a `git pull`, or an edit), CampusGuard reloads itself within about 30 seconds, or the next time you open its drop-down, and reconnects to your open email tabs. This only happens for a copy loaded with Load unpacked. If something looks stuck, click the reload arrow on CampusGuard's card in the extensions page. After an update that adds a new permission, Chrome may ask you to confirm it there.
 
 ## First use
 

@@ -212,5 +212,6 @@
   $("#s-alert").addEventListener("change", e => chrome.storage.local.set({ popAlert: e.target.checked }));
 
   view("main");
+  send({ type: "cg-dev-check" });              // a copy loaded with "Load unpacked" reloads itself if its files changed
   start();
 })();

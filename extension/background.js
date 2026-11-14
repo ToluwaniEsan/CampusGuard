@@ -91,9 +91,36 @@ chrome.runtime.onInstalled.addListener(async () => {
   const s = await chrome.storage.local.get(null);
   await chrome.storage.local.set(Object.assign({}, DEFAULTS, s));
   try { await chrome.storage.sync.remove("autoScan"); await chrome.storage.local.remove("inPageCard"); } catch (e) { /* older settings, no longer used */ }
-  sync();
+  await sync();
+  // after an install, update or reload, reconnect to email tabs that are already open
+  for (const x of await allowedOrigins()) if (x.enabled) injectOpenTabs(x.origin);
+  devStamp(true);
 });
 chrome.runtime.onStartup.addListener(() => sync());
+
+// ------------------------------------------------------------------ development: reload when the files change
+// Only for a copy loaded with "Load unpacked". Edit a file in the extension folder and, within about 30
+// seconds (or the next time the drop-down opens), CampusGuard reloads itself and picks up the change.
+const DEV_FILES = ["manifest.json", "background.js", "popup.html", "report.html", "css/ext.css", "css/popup.css",
+  "js/sites.js", "js/mail-reader.js", "js/mail-watch.js", "js/popup.js", "js/render.js", "js/report.js", "js/campusguard-engine.js"];
+let isDev = null;
+async function devMode() {
+  if (isDev === null) { try { isDev = (await chrome.management.getSelf()).installType === "development"; } catch (e) { isDev = false; } }
+  return isDev;
+}
+async function devStamp(save) {
+  if (!(await devMode())) return;
+  let all = "";
+  for (const f of DEV_FILES) { try { all += f + (await (await fetch(chrome.runtime.getURL(f), { cache: "no-store" })).text()); } catch (e) { /* missing file */ } }
+  const h = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-1", new TextEncoder().encode(all)))).map(b => b.toString(16).padStart(2, "0")).join("");
+  const { devStamp: old } = await chrome.storage.local.get("devStamp");
+  if (save || !old) { await chrome.storage.local.set({ devStamp: h }); return; }
+  if (old !== h) { console.log("CampusGuard: files changed, reloading"); await chrome.storage.local.set({ devStamp: h }); chrome.runtime.reload(); }
+}
+if (chrome.alarms) {
+  devMode().then(d => { if (d) chrome.alarms.create("cg-dev", { periodInMinutes: 0.5 }); });
+  chrome.alarms.onAlarm.addListener(a => { if (a.name === "cg-dev") devStamp(false); });
+}
 
 // access granted from the browser's own menus (not our drop-down) also counts as allowing the site
 chrome.permissions.onAdded.addListener(async p => {
@@ -171,6 +198,7 @@ chrome.tabs.onRemoved.addListener(forgetAlert);
 // ------------------------------------------------------------------ messages
 chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   if (!msg) return;
+  if (msg.type === "cg-dev-check") { devStamp(false); return; }
   if (msg.type === "cg-analyze") {
     try { reply({ ok: true, result: analyze(msg.text, msg.sender) }); } catch (e) { reply({ ok: false, error: String(e) }); }
     return;
